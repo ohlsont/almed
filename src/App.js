@@ -1,19 +1,30 @@
+// @flow
 import React, { Component } from 'react';
-import { FlatButton } from 'material-ui';
+import { FlatButton, AppBar } from 'material-ui';
 import injectTapEventPlugin from 'react-tap-event-plugin';
-import MapGL from 'react-map-gl';
-
-import logo from './logo.svg';
+import GoogleMapReact from 'google-map-react';
+import { fitBounds } from 'google-map-react/utils';
 import './App.css';
-
-
 
 // Needed for onTouchTap
 // http://stackoverflow.com/a/34015469/988941
 injectTapEventPlugin();
 
+type AlmPoint = {
+    LATITUDE: string,
+    LONGITUDE: string,
+    PLACE: string,
+    PLACE_DESCRIPTION: string,
+    id: string,
+}
+
 class App extends Component {
-    static async getAll() {
+    state = {
+        points: [],
+        bounds: { nw: {}, se: {} },
+    }
+
+    static async getAll(): Promise<any> {
         const resp = await fetch('https://almedalsguiden.com/api?version=js', {
             method: 'post',
             headers: {
@@ -27,7 +38,7 @@ class App extends Component {
         case 204:
             return {}
         case 401:
-            return new Error('bad permissions, 401 response code')
+            throw new Error('bad permissions, 401 response code')
         default:
             break
         }
@@ -40,41 +51,57 @@ class App extends Component {
         return resp.json() || {}
     }
 
-    async downloadSaveData() {
-        const almData = await App.getAll()
-        // const a = {
-        //     LATITUDE: "57.638872",
-        //     LONGITUDE:"18.290607",
-        //     PLACE:"Donners plats, H407",
-        //     PLACE_DESCRIPTION:"",
-        //     id:"7107",
-        // }
-        console.log('debug', almData)
-        localStorage.setItem('state', 'off');
+    componentWillMount() {
+        const items = localStorage.getItem('items')
+        if (!items || items === 'undefined') return
+        const points = JSON.parse(items)
+        const bounds = points.reduce((boundsAcc, point: AlmPoint) => {
+            const la = parseFloat(point.LATITUDE)
+            const lo = parseFloat(point.LONGITUDE)
+            boundsAcc['nw'] = {
+                lat: boundsAcc['nw'].lat ? Math.max(boundsAcc['nw'].lat, la) : la,
+                lng: boundsAcc['nw'].lng ? Math.min(boundsAcc['nw'].lng, lo) : lo,
+            }
+            boundsAcc['se'] = {
+                lat: boundsAcc['se'].lat ? Math.min(boundsAcc['se'].lat, la) : la,
+                lng: boundsAcc['se'].lng ? Math.max(boundsAcc['se'].lng, lo) : lo,
+            }
+            return boundsAcc
+        }, { nw: {}, se: {}})
+        this.setState({ points, bounds })
+    }
+
+    async downloadSaveData(): Promise<void> {
+        const almData: { result: Array<AlmPoint> } = await App.getAll()
+        localStorage.setItem('items', JSON.stringify(almData.result))
+        this.setState({ points: almData.result })
     }
 
     render() {
+        const AnyReactComponent = ({ text }) => <div>{text}</div>;
+        const { points, bounds } = this.state
+        const { center, zoom } = fitBounds(bounds, { height: 640, width: 320 });
+        console.log('using', points, bounds, center, zoom)
+        // const center = points.length ? { lat: points[0].LATITUDE, lng: points[0].LONGITUDE } : { lat: 0, lng: 0 }
         return (
             <div className="App">
-                <div className="App-header">
-                    <img src={logo} className="App-logo" alt="logo" />
-                    <h2>Welcome to React</h2>
-                </div>
-                <p className="App-intro">
-                    To get started, edit <code>src/App.js</code> and save to reload.
-                </p>
-                <FlatButton label={'Download'} onClick={() => this.downloadSaveData()} />
-                <MapGL
-                    width={400}
-                    height={400}
-                    latitude={37.7577}
-                    longitude={-122.4376}
-                    zoom={8}
-                    onChangeViewport={viewport => {
-                        const {latitude, longitude, zoom} = viewport;
-                        // Optionally call `setState` and use the state to update the map.
-                    }}
+                <AppBar
+                    title="Title"
+                    iconElementRight={<FlatButton label={'Download'} onClick={() => this.downloadSaveData()} />}
                 />
+                <div style={{ height: '100vh' }}>
+                    <GoogleMapReact
+                        defaultCenter={center}
+                        defaultZoom={zoom}
+                    >
+                        {Array.isArray(points) && points.map((point: AlmPoint) => <AnyReactComponent
+                            key={point.id}
+                            lat={point.LATITUDE}
+                            lng={point.LONGITUDE}
+                            text={point.PLACE}
+                        />)}
+                    </GoogleMapReact>
+                </div>
             </div>
         );
     }

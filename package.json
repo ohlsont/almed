@@ -2,7 +2,9 @@
   "name": "almed",
   "version": "0.1.0",
   "private": true,
+  "homepage": "https://almed.github.io",
   "dependencies": {
+    "google-map-react": "^0.24.0",
     "material-ui": "^0.18.3",
     "react": "^15.5.4",
     "react-dom": "^15.5.4",
@@ -11,12 +13,17 @@
   },
   "devDependencies": {
     "eslint": "^3.19.0",
+    "flow-bin": "^0.48.0",
+    "gh-pages": "^1.0.0",
     "react-scripts": "1.0.7"
   },
   "scripts": {
+    "flow": "flow",
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test --env=jsdom",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "predeploy": "yarn build",
+    "deploy": "gh-pages -d build"
   }
 }
