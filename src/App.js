@@ -21,11 +21,12 @@ type AlmPoint = {
 class App extends Component {
     state = {
         points: [],
-        bounds: { nw: {}, se: {} },
+        bounds: { nw: { lat: 0, lng: 0 }, se: { lat: 0, lng: 0 } },
     }
 
     static async getAll(): Promise<any> {
         const resp = await fetch('https://almedalsguiden.com/api?version=js', {
+            mode: 'cors',
             method: 'post',
             headers: {
                 'Content-Type': 'application/x-www-form-urlencoded',
@@ -90,7 +91,7 @@ class App extends Component {
                     iconElementRight={<FlatButton label={'Download'} onClick={() => this.downloadSaveData()} />}
                 />
                 <div style={{ height: '100vh' }}>
-                    <GoogleMapReact
+                    {!!points.length && <GoogleMapReact
                         defaultCenter={center}
                         defaultZoom={zoom}
                     >
@@ -100,7 +101,7 @@ class App extends Component {
                             lng={point.LONGITUDE}
                             text={point.PLACE}
                         />)}
-                    </GoogleMapReact>
+                    </GoogleMapReact>}
                 </div>
             </div>
         );
