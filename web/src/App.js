@@ -98,7 +98,9 @@ class App extends Component {
         const itemContent = json[2].children[3].children[5].children[5].children[3]
 
         const p = itemContent.children[9].children
+        // $FlowFixMe
         const a2 = Array.apply(null, {length: p.length}) // eslint-disable-line
+        // $FlowFixMe
             .map(Number.call, Number).filter(no => no % 2 !== 0) // eslint-disable-line
         const participants = a2.map(no => p[no].content)
         return {
