@@ -1,17 +1,25 @@
 import { Router } from 'express'
 import fetch from 'node-fetch'
-import datastore from '@google-cloud/datastore'
 import himalaya from 'himalaya'
+
+import { get, add } from './storage'
 
 const routes = Router()
 
 /**
  * GET home page
  */
+
+const dataKey = 'dataKey'
 routes.get('/', async (req, res) => {
+  const data = await get(dataKey)
+  res.json(data)
+})
+
+routes.get('/update', async (req, res) => {
   const ids = await getIds()
   const allData = await Promise.all(ids.slice(0, 10).map(id => getItem(id)))
-  res.json(allData)
+  add(dataKey, allData)
 })
 
 routes.get('/list', (req, res, next) => {
@@ -27,11 +35,6 @@ routes.get('/list', (req, res, next) => {
   }
 
   res.render('index', { title })
-})
-
-var datastoreClient = datastore({
-  projectId: 'almed-171122',
-  keyFilename: '/path/to/keyfile.json'
 })
 
 export const getAll = async () => {
