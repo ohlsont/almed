@@ -67,8 +67,8 @@
   },
   "babel": {
     "presets": [
-      "flow",
       "es2015",
+      "flow",
       [
         "env",
         {
