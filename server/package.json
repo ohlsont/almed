@@ -14,7 +14,7 @@
     "npm": ">=3.10.0"
   },
   "scripts": {
-    "prestart": "npm run -s build",
+    "prestart": "yarn && npm run -s build",
     "flowc": "node_modules/.bin/flow check",
     "start": "node dist/index.js",
     "dev": "nodemon src/index.js --exec \"node -r dotenv/config -r babel-register\"",
@@ -37,6 +37,7 @@
     "eslint"
   ],
   "dependencies": {
+    "@google-cloud/datastore": "^1.0.2",
     "babel-cli": "^6.24.1",
     "babel-preset-env": "^1.4.0",
     "body-parser": "^1.17.1",
@@ -80,9 +81,12 @@
     ]
   },
   "eslintConfig": {
+    "parser": "babel-eslint",
     "plugins": [
       "import",
-      "jest"
+      "jest",
+      "node",
+      "flowtype"
     ],
     "parserOptions": {
       "ecmaVersion": 2017,
@@ -93,11 +97,16 @@
       "jest": true
     },
     "extends": [
-      "eslint:recommended"
+      "eslint:recommended", "plugin:node/recommended", "plugin:flowtype/recommended"
     ],
     "rules": {
       "jest/no-focused-tests": 2,
-      "jest/no-identical-title": 2
+      "jest/no-identical-title": 2,
+      "node/exports-style": ["error", "module.exports"],
+      "node/no-unsupported-features": "off",
+      "semi": ["error", "never"],
+      "no-console": "off",
+      "quotes": ["error", "single"]
     }
   },
   "jest": {
