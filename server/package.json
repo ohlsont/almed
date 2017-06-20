@@ -50,8 +50,8 @@
   "devDependencies": {
     "babel-eslint": "^7.2.3",
     "babel-jest": "^20.0.0",
-    "babel-plugin-transform-flow-strip-types": "^6.22.0",
     "babel-preset-es2015": "^6.24.1",
+    "babel-preset-flow": "^6.23.0",
     "babel-register": "^6.24.1",
     "dotenv": "^4.0.0",
     "eslint": "^3.19.0",
@@ -66,10 +66,9 @@
     "supertest": "^3.0.0"
   },
   "babel": {
-    "plugins": [
-      "transform-flow-strip-types"
-    ],
     "presets": [
+      "flow",
+      "es2015",
       [
         "env",
         {
@@ -97,16 +96,27 @@
       "jest": true
     },
     "extends": [
-      "eslint:recommended", "plugin:node/recommended", "plugin:flowtype/recommended"
+      "eslint:recommended",
+      "plugin:node/recommended",
+      "plugin:flowtype/recommended"
     ],
     "rules": {
       "jest/no-focused-tests": 2,
       "jest/no-identical-title": 2,
-      "node/exports-style": ["error", "module.exports"],
+      "node/exports-style": [
+        "error",
+        "module.exports"
+      ],
       "node/no-unsupported-features": "off",
-      "semi": ["error", "never"],
+      "semi": [
+        "error",
+        "never"
+      ],
       "no-console": "off",
-      "quotes": ["error", "single"]
+      "quotes": [
+        "error",
+        "single"
+      ]
     }
   },
   "jest": {
