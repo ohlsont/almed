@@ -37,10 +37,9 @@ class App extends Component {
 
     static async fetchJson(method: string, url: string, body?: string): Promise<any> {
         const resp = await fetch(url, {
-            mode: 'no-cors',
             method,
             headers: {
-                'Content-Type': 'text/plain',
+                'Content-Type': 'application/json',
                 'Access-Control-Allow-Origin': '*',
             },
             body,

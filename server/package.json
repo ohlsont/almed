@@ -46,6 +46,7 @@
     "babel-preset-flow": "^6.23.0",
     "body-parser": "^1.17.1",
     "compression": "^1.6.2",
+    "cors": "^2.8.3",
     "express": "^4.15.2",
     "himalaya": "^0.2.10",
     "moment": "^2.18.1",
