@@ -13,33 +13,6 @@ type MapPoint = {
   LATITUDE: string,
 }
 
-type AlmedEvent = {
-  id: string,
-  title: string,
-  organiser: string,
-  date: ?string,
-  endDate: ?string,
-  type: string,
-  subject: string,
-  language: string,
-  location: string,
-  locationDescription: string,
-  description: string,
-  latitude: number,
-  longitude: number,
-  participants: Array<{
-    name: string,
-    title: string,
-    company: string,
-  }>,
-  green: boolean,
-  availabilty: string,
-  live: boolean,
-  food: boolean,
-  web: string,
-  url: string,
-}
-
 export async function getEvents(): Promise<Array<?AlmedEvent>> {
   const ids: Array<string> = await getIds()
   const mapPoints = await getMapPoints()

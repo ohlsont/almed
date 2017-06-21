@@ -4,7 +4,6 @@ import { FlatButton, AppBar } from 'material-ui';
 import injectTapEventPlugin from 'react-tap-event-plugin';
 import GoogleMapReact from 'google-map-react';
 import { fitBounds } from 'google-map-react/utils';
-import himalaya from 'himalaya'
 import './App.css';
 
 // Needed for onTouchTap
@@ -19,15 +18,24 @@ type AlmPoint = {
     id: string,
 }
 
-const applyChildren = (json: Object, arr: Array<number>) => arr
-    .reduce((acc, item) => acc.children && acc.children[item] ? acc.children[item] : {}, json).content
+type Coord = {
+    lat: number,
+    lng: number,
+}
+
 class App extends Component {
-    state = {
+    state: {
+        points: Array<AlmedEvent>,
+        bounds: { nw: Coord, se: Coord }
+    } = {
         points: [],
-        bounds: { nw: { lat: 0, lng: 0 }, se: { lat: 0, lng: 0 } },
+        bounds: {
+            nw: { lat: 0, lng: 0 },
+            se: { lat: 0, lng: 0 }
+        },
     }
 
-    static async fetchJson(method: string, url: string, body: string) {
+    static async fetchJson(method: string, url: string, body?: string): Promise<any> {
         const resp = await fetch(url, {
             mode: 'no-cors',
             method,
@@ -52,15 +60,7 @@ class App extends Component {
             throw new Error(`bad response from server ${resp.status}`)
         }
 
-        return resp.json() || {}
-    }
-
-    static async getAll(): Promise<any> {
-        return App.fetchJson(
-            'POST',
-            'https://almedalsguiden.com/api?version=js',
-            'search_place=a',
-        )
+        return resp.json()
     }
 
     componentWillMount() {
@@ -84,11 +84,10 @@ class App extends Component {
     }
 
     async downloadSaveData(): Promise<void> {
-        // const almData: { result: Array<AlmPoint> } = await App.getAll()
-        // localStorage.setItem('items', JSON.stringify(almData.result))
-        // this.setState({ points: almData.result })
-        const allData = await Promise.all(ids.slice(0, 10).map(id => App.getItem(id)))
-        console.log('allData', allData)
+        const allData: Array<AlmedEvent> = await App.fetchJson('GET', 'https://almed-171122.appspot.com/')
+        console.log('items gotten from server', allData)
+        localStorage.setItem('items', JSON.stringify(allData))
+        this.setState({ points: allData })
     }
 
     render() {
@@ -108,11 +107,11 @@ class App extends Component {
                         defaultCenter={center}
                         defaultZoom={zoom}
                     >
-                        {Array.isArray(points) && points.map((point: AlmPoint) => <AnyReactComponent
+                        {Array.isArray(points) && points.map((point: AlmedEvent) => <AnyReactComponent
                             key={point.id}
-                            lat={point.LATITUDE}
-                            lng={point.LONGITUDE}
-                            text={point.PLACE}
+                            lat={point.latitude}
+                            lng={point.longitude}
+                            text={point.location}
                         />)}
                     </GoogleMapReact>}
                 </div>

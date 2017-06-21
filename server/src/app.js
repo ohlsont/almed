@@ -1,11 +1,13 @@
 // @flow
 import express from 'express'
+import compression from 'compression'
 import path from 'path'
 import logger from 'morgan'
 import bodyParser from 'body-parser'
 import routes from './routes'
 
 const app: any = express()
+app.use(compression())
 app.disable('x-powered-by')
 
 // View engine setup

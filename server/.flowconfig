@@ -4,5 +4,6 @@
 
 [libs]
 flow-typed
+../types
 
 [options]
