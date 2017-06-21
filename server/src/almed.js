@@ -10,7 +10,29 @@ type MapPoint = {
   LATITUDE: string,
 }
 
-export async function getEvents() {
+type AlmedEvent = {
+  id: string,
+  title: string,
+  organiser: string,
+  date: string,
+  type: string,
+  subject: string,
+  language: string,
+  location: string,
+  locationDescription: string,
+  description: string,
+  latitude: string,
+  longitude: string,
+  participants: string,
+  green: string,
+  availabilty: string,
+  live: string,
+  food: string,
+  web: string,
+  url: string,
+}
+
+export async function getEvents(): Promise<Array<AlmedEvent>> {
   const ids: Array<string> = await getIds()
   const mapPoints = await getMapPoints()
   const mapMapPoints = mapPoints.result.reduce((acc, mapPoint: MapPoint) => {
@@ -26,8 +48,8 @@ export async function getEvents() {
       console.log('chunkIndex' + i + ' item', index, ' id ', id)
       return getItem(id, mapMapPoints)
     }))
-    await sleep(2000)
-    res.push(...eventsChunk)
+    await sleep(5000)
+    res.push(...eventsChunk.filter(e => e))
   }
   return res
 }
@@ -61,7 +83,7 @@ export const getMapPoints = async (): Promise<Resp> => {
   return resp.json() || {}
 }
 
-const applyChildren = (json: Object, arr: Array<number>, withContent: boolean = true) => {
+const applyChildren = (json: Object, arr: Array<number>, withContent: boolean = true): any => {
   const res = arr.reduce((acc, item) => acc.children && acc.children[item] ? acc.children[item] : {}, json)
   return withContent ? res.content : res
 }
@@ -102,7 +124,7 @@ async function getIds(): Promise<Array<string>> {
   return elements.map(elem => elem.attributes ? elem.attributes.href : null).filter(e => e)
 }
 
-async function getItem(href: string, mapMapPoints: {[key: string]: MapPoint}) {
+async function getItem(href: string, mapMapPoints: {[key: string]: MapPoint}): Promise<AlmedEvent> {
   const id = href.split('/').pop()
   const mapPoint = mapMapPoints[id] || {}
   const url = `https://almedalsguiden.com${href}`
@@ -144,8 +166,8 @@ async function getItem(href: string, mapMapPoints: {[key: string]: MapPoint}) {
   }
 }
 
-function makeChunks<T>(arr: Array<T>, chunkSize: number): Array<Array<T>> {
-  return arr.reduce((ar, it, i) => {
+function makeChunks<T>(arr: Array<T>, chunkSize: number, splice?: number): Array<Array<T>> {
+  return (splice ? arr.splice(0, splice) : arr).reduce((ar, it, i) => {
     const ix = Math.floor(i / chunkSize)
 
     if(!ar[ix]) {
