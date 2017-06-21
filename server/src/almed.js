@@ -17,7 +17,7 @@ export async function getEvents() {
     acc[mapPoint.id] = mapPoint
     return acc
   }, {})
-  const res = await Promise.all(ids.slice(0,10).map(id => getItem(id, mapMapPoints)))
+  const res = await Promise.all(ids.map(id => getItem(id, mapMapPoints)))
   return res
 }
 
