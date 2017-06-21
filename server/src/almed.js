@@ -1,6 +1,7 @@
 // @flow
 import fetch from 'node-fetch'
 import himalaya from 'himalaya'
+import moment from 'moment'
 
 import { makeChunks } from './utils'
 
@@ -16,7 +17,8 @@ type AlmedEvent = {
   id: string,
   title: string,
   organiser: string,
-  date: string,
+  date: ?string,
+  endDate: ?string,
   type: string,
   subject: string,
   language: string,
@@ -25,16 +27,20 @@ type AlmedEvent = {
   description: string,
   latitude: string,
   longitude: string,
-  participants: string,
-  green: string,
+  participants: Array<{
+    name: string,
+    title: string,
+    company: string,
+  }>,
+  green: boolean,
   availabilty: string,
-  live: string,
-  food: string,
+  live: boolean,
+  food: boolean,
   web: string,
   url: string,
 }
 
-export async function getEvents(): Promise<Array<AlmedEvent>> {
+export async function getEvents(): Promise<Array<?AlmedEvent>> {
   const ids: Array<string> = await getIds()
   const mapPoints = await getMapPoints()
   const mapMapPoints = mapPoints.result.reduce((acc, mapPoint: MapPoint) => {
@@ -57,7 +63,7 @@ export async function getEvents(): Promise<Array<AlmedEvent>> {
 }
 
 function sleep(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
+  return new Promise(resolve => setTimeout(resolve, ms))
 }
 
 type Resp = { result: Array<MapPoint> }
@@ -87,7 +93,7 @@ export const getMapPoints = async (): Promise<Resp> => {
 
 const applyChildren = (json: Object, arr: Array<number>, withContent: boolean = true): any => {
   const res = arr.reduce((acc, item) => acc.children && acc.children[item] ? acc.children[item] : {}, json)
-  return withContent ? res.content : res
+  return withContent ? removeFirstSpace(res.content) : res
 }
 export async function getIds(): Promise<Array<string>> {
   const url = 'https://almedalsguiden.com/main/search'
@@ -126,28 +132,60 @@ export async function getIds(): Promise<Array<string>> {
   return [...new Set(elements.map(elem => elem.attributes ? elem.attributes.href : null).filter(e => e))]
 }
 
-async function getItem(href: string, mapMapPoints: {[key: string]: MapPoint}): Promise<?AlmedEvent> {
+export async function getParsedItem(id: string): Promise<Array<any>> {
+  const url = `https://almedalsguiden.com/event/${id}`
+  const resp = await fetch(url)
+  const res = await resp.text()
+  return himalaya.parse(res)
+}
+
+const removeFirstSpace = (str: string): string => !str.charAt(0).match(/[a-z]/i) ? str.slice(1) : str
+export async function getItem(href: string, mapMapPoints: {[key: string]: MapPoint}): Promise<?AlmedEvent> {
   const id = href.split('/').pop()
   const mapPoint = mapMapPoints[id] || {}
-  const url = `https://almedalsguiden.com${href}`
   try {
-    const resp = await fetch(url)
-    const res = await resp.text()
-    const json = himalaya.parse(res)
+    const json = await getParsedItem(id)
     const itemContent = applyChildren(json[2], [3,5,5,3], false)
+    const p: ?Array<any> = applyChildren(itemContent, [9], false).children
+    let participants = []
+    if (p) {
+      const a2 = p.filter(item => item.content && item.content.match(/[a-z]/i))
+      participants = a2.filter(e => e && e.content).map(no => {
+        const pList: Array<string> = no.content.split(',').map(removeFirstSpace)
+        return {
+          name: pList[0],
+          title: pList[1],
+          company: pList[2],
+        }
+      })
+    }
 
-    const p = applyChildren(itemContent, [9], false)
-    // $FlowFixMe
-    const a2 = Array.apply(null, {length: p.length}) // eslint-disable-line
-    // $FlowFixMe
-      .map(Number.call, Number)
-      .filter(no => no % 2 !== 0) // eslint-disable-line
-    const participants = a2.map(no => p[no].content).filter(e => e)
+
+    const dd = applyChildren(itemContent, [3,3,1])
+    let endDate = null
+    let date = null
+    if (dd) {
+      const d = dd.split('&ndash;')
+      date = moment(d[0], 'DD/MM YYYY HH:mm')
+      if (date && d.length > 1) {
+        endDate = date.clone()
+        const endTimeList = d[1].split(':')
+        if (endTimeList.length > 1) {
+          endDate.hour(endTimeList[0])
+          endDate.minute(endTimeList[1])
+        }
+      }
+    }
+
+    const live = applyChildren(itemContent, [11,5,1])
+    const food = applyChildren(itemContent, [11,7,1])
+    const green = applyChildren(itemContent, [11,1,1])
     return {
       id,
       title: applyChildren(itemContent, [1,0]),
       organiser: applyChildren(itemContent, [3,1,1]),
-      date: applyChildren(itemContent, [3,3,1]),
+      date: date ? date.format() : null,
+      endDate: endDate ? endDate.format() : null,
       type: applyChildren(itemContent, [5,1,1]),
       subject: applyChildren(itemContent, [5,3,1]),
       language: applyChildren(itemContent, [5,5,1]),
@@ -157,12 +195,12 @@ async function getItem(href: string, mapMapPoints: {[key: string]: MapPoint}): P
       latitude: mapPoint.LATITUDE,
       longitude: mapPoint.LONGITUDE,
       participants,
-      green: applyChildren(itemContent, [11,1,1]),
+      green: !!(green && green.includes('Ja')),
       availabilty: applyChildren(itemContent, [11,3,1]),
-      live: applyChildren(itemContent, [11,5,1]),
-      food: applyChildren(itemContent, [11,7,1]),
+      live: !!(live && live.includes('Ja')),
+      food: !!(food && food.includes('Ja')),
       web: applyChildren(itemContent, [13,1,0,0]),
-      url,
+      url: `https://almedalsguiden.com/event/${id}`,
       // contact: applyChildren(itemContent, [15,1,1,0,0]),
       // contactOrg: applyChildren(itemContent, [15,1,1]),
       // contactNumber: applyChildren(itemContent, [6,1,1]),

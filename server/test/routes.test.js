@@ -1,6 +1,8 @@
+// @flow
+
 import request from 'supertest'
 import app from '../src/app.js'
-import { getAll } from '../src/routes'
+import { getItem } from '../src/almed'
 
 describe('GET /', () => {
   it('should render properly', async () => {
@@ -29,8 +31,8 @@ describe('GET /404', () => {
 })
 
 
-describe('get alm', () => {
+describe('get item', () => {
   it('should return', async () => {
-    await getAll()
+    await getItem(6936).expect(200)
   })
 })
