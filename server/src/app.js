@@ -1,10 +1,11 @@
+// @flow
 import express from 'express'
 import path from 'path'
 import logger from 'morgan'
 import bodyParser from 'body-parser'
 import routes from './routes'
 
-const app = express()
+const app: any = express()
 app.disable('x-powered-by')
 
 // View engine setup
@@ -24,6 +25,7 @@ app.use('/', routes)
 // Catch 404 and forward to error handler
 app.use((req, res, next) => {
   const err = new Error('Not Found')
+  // $FlowFixMe
   err.status = 404
   next(err)
 })

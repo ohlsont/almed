@@ -3,10 +3,11 @@ import Datastore from '@google-cloud/datastore'
 
 const datastore = Datastore()
 
-export async function add(key: string, data: Object) {
-  const taskKey = datastore.key(key)
+const getKey = (key: string) => datastore.key([key, 'data'])
+
+export async function add(dataKey: string, data: Object): Promise<any> {
   const entity = {
-    key: taskKey,
+    key: getKey(dataKey),
     data: [
       {
         name: 'data',
@@ -15,20 +16,15 @@ export async function add(key: string, data: Object) {
     ]
   }
   await datastore.save(entity)
-  console.log(`Task ${taskKey.id} created successfully.`)
-  return taskKey
+  console.log(`Task ${dataKey} created successfully.`)
+  return dataKey
 }
 
-export async function get(key: string) {
-  const query = datastore.createQuery(key)
-  const results = await datastore.runQuery(query)
-  const tasks = results[0]
+export async function del(key: string): Promise<void> {
+  const res = await datastore.delete(getKey(key))
+  console.log('delete result', res)
+}
 
-  console.log('Tasks:')
-  tasks.forEach((task) => {
-    const taskKey = task[datastore.KEY]
-    console.log(taskKey.id, task)
-  })
-
-  return tasks
+export async function get(key: string): Promise<any> {
+  return await datastore.get(getKey(key))
 }

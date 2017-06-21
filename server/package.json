@@ -18,6 +18,7 @@
     "flowc": "node_modules/.bin/flow check",
     "start": "node dist/index.js",
     "dev": "nodemon src/index.js --exec \"node -r dotenv/config -r babel-register\"",
+    "devLogin" : "gcloud auth application-default login",
     "deploy": "gcloud app deploy app.yaml --version=`echo $(date +%Y%m%dt%H%M%S)-$(git rev-parse HEAD | cut -c1-7)`",
     "clean": "rimraf dist",
     "build": "npm run clean && mkdir -p dist && babel src -s -D -d dist",
