@@ -2,6 +2,8 @@
 import fetch from 'node-fetch'
 import himalaya from 'himalaya'
 
+import { makeChunks } from './utils'
+
 type MapPoint = {
   id: string,
   PLACE: string,
@@ -48,7 +50,7 @@ export async function getEvents(): Promise<Array<AlmedEvent>> {
       console.log('chunkIndex' + i + ' item', index, ' id ', id)
       return getItem(id, mapMapPoints)
     }))
-    await sleep(5000)
+    // await sleep(4000)
     res.push(...eventsChunk.filter(e => e))
   }
   return res
@@ -124,59 +126,49 @@ async function getIds(): Promise<Array<string>> {
   return elements.map(elem => elem.attributes ? elem.attributes.href : null).filter(e => e)
 }
 
-async function getItem(href: string, mapMapPoints: {[key: string]: MapPoint}): Promise<AlmedEvent> {
+async function getItem(href: string, mapMapPoints: {[key: string]: MapPoint}): Promise<?AlmedEvent> {
   const id = href.split('/').pop()
   const mapPoint = mapMapPoints[id] || {}
   const url = `https://almedalsguiden.com${href}`
-  const resp = await fetch(url)
-  const res = await resp.text()
-  const json = himalaya.parse(res)
-  const itemContent = applyChildren(json[2], [3,5,5,3], false)
+  try {
+    const resp = await fetch(url)
+    const res = await resp.text()
+    const json = himalaya.parse(res)
+    const itemContent = applyChildren(json[2], [3,5,5,3], false)
 
-  const p = applyChildren(itemContent, [9], false)
-  // $FlowFixMe
-  const a2 = Array.apply(null, {length: p.length}) // eslint-disable-line
-  // $FlowFixMe
-    .map(Number.call, Number)
-    .filter(no => no % 2 !== 0) // eslint-disable-line
-  const participants = a2.map(no => p[no].content).filter(e => e)
-  return {
-    id,
-    title: applyChildren(itemContent, [1,0]),
-    organiser: applyChildren(itemContent, [3,1,1]),
-    date: applyChildren(itemContent, [3,3,1]),
-    type: applyChildren(itemContent, [5,1,1]),
-    subject: applyChildren(itemContent, [5,3,1]),
-    language: applyChildren(itemContent, [5,5,1]),
-    location: applyChildren(itemContent, [5,7,1]),
-    locationDescription: applyChildren(itemContent, [5,9,1]),
-    description: applyChildren(itemContent, [7,0]),
-    latitude: mapPoint.LATITUDE,
-    longitude: mapPoint.LONGITUDE,
-    participants,
-    green: applyChildren(itemContent, [11,1,1]),
-    availabilty: applyChildren(itemContent, [11,3,1]),
-    live: applyChildren(itemContent, [11,5,1]),
-    food: applyChildren(itemContent, [11,7,1]),
-    web: applyChildren(itemContent, [13,1,0,0]),
-    url,
-    // contact: applyChildren(itemContent, [15,1,1,0,0]),
-    // contactOrg: applyChildren(itemContent, [15,1,1]),
-    // contactNumber: applyChildren(itemContent, [6,1,1]),
+    const p = applyChildren(itemContent, [9], false)
+    // $FlowFixMe
+    const a2 = Array.apply(null, {length: p.length}) // eslint-disable-line
+    // $FlowFixMe
+      .map(Number.call, Number)
+      .filter(no => no % 2 !== 0) // eslint-disable-line
+    const participants = a2.map(no => p[no].content).filter(e => e)
+    return {
+      id,
+      title: applyChildren(itemContent, [1,0]),
+      organiser: applyChildren(itemContent, [3,1,1]),
+      date: applyChildren(itemContent, [3,3,1]),
+      type: applyChildren(itemContent, [5,1,1]),
+      subject: applyChildren(itemContent, [5,3,1]),
+      language: applyChildren(itemContent, [5,5,1]),
+      location: applyChildren(itemContent, [5,7,1]),
+      locationDescription: applyChildren(itemContent, [5,9,1]),
+      description: applyChildren(itemContent, [7,0]),
+      latitude: mapPoint.LATITUDE,
+      longitude: mapPoint.LONGITUDE,
+      participants,
+      green: applyChildren(itemContent, [11,1,1]),
+      availabilty: applyChildren(itemContent, [11,3,1]),
+      live: applyChildren(itemContent, [11,5,1]),
+      food: applyChildren(itemContent, [11,7,1]),
+      web: applyChildren(itemContent, [13,1,0,0]),
+      url,
+      // contact: applyChildren(itemContent, [15,1,1,0,0]),
+      // contactOrg: applyChildren(itemContent, [15,1,1]),
+      // contactNumber: applyChildren(itemContent, [6,1,1]),
+    }
+  } catch (error) {
+      console.error('try get event ', error)
+      return null
   }
 }
-
-function makeChunks<T>(arr: Array<T>, chunkSize: number, splice?: number): Array<Array<T>> {
-  return (splice ? arr.splice(0, splice) : arr).reduce((ar, it, i) => {
-    const ix = Math.floor(i / chunkSize)
-
-    if(!ar[ix]) {
-      ar[ix] = [];
-    }
-
-    ar[ix].push(it)
-
-    return ar
-  }, [])
-}
-

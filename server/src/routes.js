@@ -6,7 +6,7 @@ import { getEvents, getMapPoints } from './almed'
 
 const routes: any = Router()
 
-const dataKey = 'almedKey'
+const dataKey = 'almedEvent'
 routes.get('/', async (req, res) => {
   const data = await getCollection(dataKey)
   res.json(data)
@@ -21,9 +21,7 @@ routes.get('/empty', async (req, res) => {
   res.sendStatus(200)
 })
 routes.get('/update', async (req, res) => {
-  const allData = await getEvents()
-  // await del(dataKey)
-  await add(dataKey, allData)
+  await getEvents().then(allData => add(dataKey, allData))
   res.sendStatus(200)
 })
 
