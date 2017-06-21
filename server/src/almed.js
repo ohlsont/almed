@@ -25,8 +25,8 @@ type AlmedEvent = {
   location: string,
   locationDescription: string,
   description: string,
-  latitude: string,
-  longitude: string,
+  latitude: number,
+  longitude: number,
   participants: Array<{
     name: string,
     title: string,
@@ -139,7 +139,7 @@ export async function getParsedItem(id: string): Promise<Array<any>> {
   return himalaya.parse(res)
 }
 
-const removeFirstSpace = (str: string): string => !str.charAt(0).match(/[a-z]/i) ? str.slice(1) : str
+const removeFirstSpace = (str: string): string => str && !str.charAt(0).match(/[a-z]/i) ? str.slice(1) : str
 export async function getItem(href: string, mapMapPoints: {[key: string]: MapPoint}): Promise<?AlmedEvent> {
   const id = href.split('/').pop()
   const mapPoint = mapMapPoints[id] || {}
@@ -192,8 +192,8 @@ export async function getItem(href: string, mapMapPoints: {[key: string]: MapPoi
       location: applyChildren(itemContent, [5,7,1]),
       locationDescription: applyChildren(itemContent, [5,9,1]),
       description: applyChildren(itemContent, [7,0]),
-      latitude: mapPoint.LATITUDE,
-      longitude: mapPoint.LONGITUDE,
+      latitude: parseFloat(mapPoint.LATITUDE),
+      longitude: parseFloat(mapPoint.LONGITUDE),
       participants,
       green: !!(green && green.includes('Ja')),
       availabilty: applyChildren(itemContent, [11,3,1]),

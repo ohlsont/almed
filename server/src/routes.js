@@ -51,7 +51,9 @@ routes.get('/empty', async (req, res) => {
   res.sendStatus(200)
 })
 routes.get('/update', async (req, res) => {
-  await getEvents().then(allData => add(dataKey, allData))
+  const allData = await getEvents()
+  console.log('inserting items: ', allData.length)
+  await add(dataKey, allData)
   res.sendStatus(200)
 })
 
