@@ -50,7 +50,7 @@ export async function getEvents(): Promise<Array<AlmedEvent>> {
       console.log('chunkIndex' + i + ' item', index, ' id ', id)
       return getItem(id, mapMapPoints)
     }))
-    // await sleep(4000)
+    await sleep(3000)
     res.push(...eventsChunk.filter(e => e))
   }
   return res
@@ -89,7 +89,7 @@ const applyChildren = (json: Object, arr: Array<number>, withContent: boolean = 
   const res = arr.reduce((acc, item) => acc.children && acc.children[item] ? acc.children[item] : {}, json)
   return withContent ? res.content : res
 }
-async function getIds(): Promise<Array<string>> {
+export async function getIds(): Promise<Array<string>> {
   const url = 'https://almedalsguiden.com/main/search'
   const resp = await fetch(url, {
     method: 'post',
@@ -123,7 +123,7 @@ async function getIds(): Promise<Array<string>> {
   const res = await resp.text()
   const json = himalaya.parse(res)
   const elements = applyChildren(json[2], [3,5,5,1,3], false).children
-  return elements.map(elem => elem.attributes ? elem.attributes.href : null).filter(e => e)
+  return [...new Set(elements.map(elem => elem.attributes ? elem.attributes.href : null).filter(e => e))]
 }
 
 async function getItem(href: string, mapMapPoints: {[key: string]: MapPoint}): Promise<?AlmedEvent> {

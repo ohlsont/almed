@@ -2,7 +2,7 @@
 import { Router } from 'express'
 
 import { getCollection, add, del } from './storage'
-import { getEvents, getMapPoints } from './almed'
+import { getEvents, getMapPoints, getIds } from './almed'
 
 const routes: any = Router()
 
@@ -14,6 +14,10 @@ routes.get('/', async (req, res) => {
 
 routes.get('/map', async (req, res) => {
   res.json(getMapPoints())
+})
+
+routes.get('/ids', async (req, res) => {
+  res.json((await getIds()).sort())
 })
 
 routes.get('/empty', async (req, res) => {
