@@ -4,12 +4,12 @@
   "private": true,
   "homepage": "https://ohlsont.github.io/almed",
   "dependencies": {
-    "google-map-react": "^0.24.0",
-    "himalaya": "^0.2.10",
+    "mapbox-gl": "^0.37.0",
     "material-ui": "^0.18.3",
+    "moment": "^2.18.1",
     "react": "^15.5.4",
     "react-dom": "^15.5.4",
-    "react-map-gl": "^2.0.3",
+    "react-mapbox-gl": "^2.0.4",
     "react-tap-event-plugin": "^2.0.1"
   },
   "devDependencies": {
@@ -26,5 +26,8 @@
     "eject": "react-scripts eject",
     "predeploy": "yarn build",
     "deploy": "gh-pages -d build"
+  },
+  "peerDependencies": {
+    "mapbox-gl": "^0.38.0"
   }
 }
