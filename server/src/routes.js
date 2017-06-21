@@ -22,7 +22,7 @@ routes.get('/empty', async (req, res) => {
 })
 routes.get('/update', async (req, res) => {
   const allData = await getEvents()
-  // await del(dataKey)
+  await del(dataKey)
   await add(dataKey, allData)
   res.sendStatus(200)
 })

@@ -11,14 +11,29 @@ type MapPoint = {
 }
 
 export async function getEvents() {
-  const ids = await getIds()
+  const ids: Array<string> = await getIds()
   const mapPoints = await getMapPoints()
   const mapMapPoints = mapPoints.result.reduce((acc, mapPoint: MapPoint) => {
     acc[mapPoint.id] = mapPoint
     return acc
   }, {})
-  const res = await Promise.all(ids.map(id => getItem(id, mapMapPoints)))
+  console.log('getting ids: ', ids.length)
+  const idsChunks: Array<Array<string>> = makeChunks(ids, 100)
+  const res = []
+  for (let i = 0; i<idsChunks.length; i++) {
+    const idsChunk = idsChunks[i]
+    const eventsChunk = await Promise.all(idsChunk.map((id: string, index: number) => {
+      console.log('chunkIndex' + i + ' item', index, ' id ', id)
+      return getItem(id, mapMapPoints)
+    }))
+    await sleep(2000)
+    res.push(...eventsChunk)
+  }
   return res
+}
+
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 type Resp = { result: Array<MapPoint> }
@@ -46,9 +61,11 @@ export const getMapPoints = async (): Promise<Resp> => {
   return resp.json() || {}
 }
 
-const applyChildren = (json: Object, arr: Array<number>) => arr
-  .reduce((acc, item) => acc.children && acc.children[item] ? acc.children[item] : {}, json).content
-async function getIds() {
+const applyChildren = (json: Object, arr: Array<number>, withContent: boolean = true) => {
+  const res = arr.reduce((acc, item) => acc.children && acc.children[item] ? acc.children[item] : {}, json)
+  return withContent ? res.content : res
+}
+async function getIds(): Promise<Array<string>> {
   const url = 'https://almedalsguiden.com/main/search'
   const resp = await fetch(url, {
     method: 'post',
@@ -73,7 +90,7 @@ async function getIds() {
 
   switch (resp.status) {
     case 204:
-      return {}
+      return []
     case 401:
       throw new Error('bad permissions, 401 response code')
     default:
@@ -81,27 +98,26 @@ async function getIds() {
   }
   const res = await resp.text()
   const json = himalaya.parse(res)
-  const elements = json[2].children[3].children[5].children[5].children[1].children[3].children
+  const elements = applyChildren(json[2], [3,5,5,1,3], false).children
   return elements.map(elem => elem.attributes ? elem.attributes.href : null).filter(e => e)
 }
 
-async function getItem(href, mapMapPoints: {[key: string]: MapPoint}) {
+async function getItem(href: string, mapMapPoints: {[key: string]: MapPoint}) {
   const id = href.split('/').pop()
   const mapPoint = mapMapPoints[id] || {}
   const url = `https://almedalsguiden.com${href}`
   const resp = await fetch(url)
   const res = await resp.text()
   const json = himalaya.parse(res)
-  const itemContent = json[2].children[3].children[5].children[5].children[3]
+  const itemContent = applyChildren(json[2], [3,5,5,3], false)
 
-  const p = itemContent.children[9].children
+  const p = applyChildren(itemContent, [9], false)
   // $FlowFixMe
   const a2 = Array.apply(null, {length: p.length}) // eslint-disable-line
   // $FlowFixMe
     .map(Number.call, Number)
     .filter(no => no % 2 !== 0) // eslint-disable-line
   const participants = a2.map(no => p[no].content).filter(e => e)
-  // console.log('participants', p)
   return {
     id,
     title: applyChildren(itemContent, [1,0]),
@@ -127,3 +143,18 @@ async function getItem(href, mapMapPoints: {[key: string]: MapPoint}) {
     // contactNumber: applyChildren(itemContent, [6,1,1]),
   }
 }
+
+function makeChunks<T>(arr: Array<T>, chunkSize: number): Array<Array<T>> {
+  return arr.reduce((ar, it, i) => {
+    const ix = Math.floor(i / chunkSize)
+
+    if(!ar[ix]) {
+      ar[ix] = [];
+    }
+
+    ar[ix].push(it)
+
+    return ar
+  }, [])
+}
+

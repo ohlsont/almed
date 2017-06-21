@@ -5,7 +5,7 @@ const datastore = Datastore()
 
 const getKey = (key: string) => datastore.key([key, 'data'])
 
-export async function add(dataKey: string, data: Object): Promise<any> {
+export async function add(dataKey: string, data: any): Promise<any> {
   const entity = {
     key: getKey(dataKey),
     data: [
