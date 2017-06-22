@@ -1,3 +1,9 @@
+type AlmedParticipant = {
+    name: string,
+    title: string,
+    company: string,
+}
+
 type AlmedEvent = {
     id: string,
     title: string,
@@ -12,11 +18,7 @@ type AlmedEvent = {
     description: string,
     latitude: number,
     longitude: number,
-    participants: Array<{
-        name: string,
-        title: string,
-        company: string,
-    }>,
+    participants: Array<AlmedParticipant>,
     green: boolean,
     availabilty: string,
     live: boolean,

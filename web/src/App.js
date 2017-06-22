@@ -1,9 +1,15 @@
 // @flow
 import React, { Component } from 'react';
-import { FlatButton, AppBar, SelectField, MenuItem, Slider } from 'material-ui';
+import {
+    FlatButton, AppBar, SelectField, MenuItem, Slider, AutoComplete, Toggle
+} from 'material-ui';
 import injectTapEventPlugin from 'react-tap-event-plugin'
-import ReactMapboxGl, { Cluster, Marker } from 'react-mapbox-gl'
+import ReactMapboxGl, { Cluster, Marker, Popup } from 'react-mapbox-gl'
 import moment from 'moment'
+
+import ParticipantModal from './participantModal'
+import AlmedDrawer from './drawer'
+import ItemDrawer from './itemDrawer'
 import './App.css';
 
 // Needed for onTouchTap
@@ -17,13 +23,19 @@ type Coord = {
 
 type Appstate = {
     points: Array<AlmedEvent>,
-    subjects?: Array<string>,
-    choosenSubjectIndex?: number,
+    participantsMap: {[key: string]: [AlmedParticipant, number]},
+    choosenPoint?: AlmedEvent,
+
+    choosenParticipant?: AlmedParticipant,
+    subjectsObject?: {[key: string]: number},
+    choosenSubjectIndex?: ?number,
 
     unixSecondsMax?: number,
     unixSecondsMin?: number,
     choosenUnixSecondsMax?: number,
     choosenUnixSecondsMin?: number,
+
+    food?: boolean,
 
     bounds: {
         nw: Coord,
@@ -36,6 +48,7 @@ type Appstate = {
 class App extends Component {
     state: Appstate  = {
         points: [],
+        participantsMap: {},
         bounds: {
             nw: { lat: 0, lng: 0 },
             se: { lat: 0, lng: 0 },
@@ -77,10 +90,22 @@ class App extends Component {
         const points: Array<AlmedEvent> = JSON.parse(items)
         const subjectsObject = {}
         const times = []
+        const participantsMap: {[key: string]: AlmedParticipant} = {}
         const bounds = points.reduce((boundsAcc, point: AlmedEvent) => {
             const la = parseFloat(point.latitude)
             const lo = parseFloat(point.longitude)
-            subjectsObject[point.subject] = true
+            if (point.subject) subjectsObject[point.subject] = subjectsObject[point.subject] ? subjectsObject[point.subject] + 1 : 1
+            if (point.participants && point.participants.length) {
+                point.participants.forEach(part => {
+                    const p: ?[AlmedParticipant, number] = participantsMap[part.name]
+                    if (p) {
+                        participantsMap[part.name] = [part, (p[1] || 0) + 1]
+                    } else {
+                        participantsMap[part.name] = [part, 1]
+                    }
+                })
+
+            }
             if (point.date) {
                 const d = Math.round(new Date(point.date).getTime()/1000)
                 if (!isNaN(d)) times.push(d)
@@ -98,13 +123,19 @@ class App extends Component {
             f('se', Math.min, Math.max)
             return boundsAcc
         }, this.state.bounds)
-        console.log('debug', times.sort(), Math.min(...times))
-        this.setState({
-            points,
-            bounds,
-            subjects: Object.keys(subjectsObject).sort(),
+        console.log('participantsMap', participantsMap)
+        const d = {
             unixSecondsMin: Math.min(...times),
             unixSecondsMax: Math.max(...times),
+        }
+        this.setState({
+            points,
+            participantsMap,
+            bounds,
+            subjectsObject,
+            ...d,
+            choosenUnixSecondsMin: d.unixSecondsMin,
+            choosenUnixSecondsMax: d.unixSecondsMax,
         })
     }
 
@@ -120,16 +151,40 @@ class App extends Component {
         this.setState({ points: allData })
     }
 
+    filterPoints() {
+        const { points, choosenSubjectIndex, subjectsObject,
+            choosenUnixSecondsMin, choosenUnixSecondsMax, food } = this.state
+        const subjects = Object.keys(subjectsObject || {}).sort()
+        const choosenSubject = choosenSubjectIndex != null && subjects ? subjects[choosenSubjectIndex] : null
+        const res = points.filter(point => {
+            let keep = choosenSubject ? point.subject === choosenSubject : true
+            if (point.date) {
+                const time = new Date(point.date).getTime()/1000
+                if (choosenUnixSecondsMin) keep = keep && choosenUnixSecondsMin < time
+                if (choosenUnixSecondsMax) keep = keep && choosenUnixSecondsMax > time
+            }
+
+            if (food) {
+                keep = keep && point.food
+            }
+            return keep
+        })
+        // console.log('choosenSubjectIndex', choosenSubjectIndex, res, choosenSubject)
+        return res
+    }
+
+
     renderMap(points: Array<AlmedEvent>) {
-        const { bounds } = this.state
+        const { bounds, choosenPoint } = this.state
         const Map = ReactMapboxGl({
             accessToken: "pk.eyJ1IjoiaGluayIsImEiOiJ0emd1UlZNIn0.NpY-l_Elzhz9aOLoql6zZQ"
         });
 
+        const markerSize = 40
         const styles = {
             clusterMarker: {
-                width: 30,
-                height: 30,
+                width: markerSize,
+                height: markerSize,
                 borderRadius: '50%',
                 backgroundColor: '#51D5A0',
                 display: 'flex',
@@ -137,24 +192,25 @@ class App extends Component {
                 alignItems: 'center',
                 color: 'white',
                 border: '2px solid #56C498',
-                pointerEvents: 'none'
             },
             marker: {
-                width: 30,
-                height: 30,
+                width: markerSize,
+                height: markerSize,
                 borderRadius: '50%',
                 backgroundColor: '#E0E0E0',
                 display: 'flex',
                 justifyContent: 'center',
                 alignItems: 'center',
                 border: '2px solid #C9C9C9',
-                pointerEvents: 'none'
             }
         }
         const clusterMarker = (coordinates: Array<number>, pointCount: number) => <Marker
             key={`${pointCount}-${coordinates[0]}-${coordinates[1]}`}
             coordinates={coordinates}
             style={styles.clusterMarker}
+            onClick={(event, item, c) => {
+                console.log('cluster', event, item, c)
+            }}
         >
             <div>{pointCount}</div>
         </Marker>
@@ -162,84 +218,145 @@ class App extends Component {
         const markers = points
             .filter((e: AlmedEvent) => e.longitude && e.latitude)
             .map((point: AlmedEvent) => <Marker
-            key={`id-${point.id}`}
-            coordinates={[point.longitude, point.latitude]}
-            style={styles.marker}
-            onClick={() => console.log('click', point)}>
+                key={`id-${point.id}`}
+                coordinates={[point.longitude, point.latitude]}
+                style={styles.marker}
+                onClick={(event, item, c) => {
+                    console.log('marker click', point)
+                    this.setState({
+                        choosenPoint: point,
+                    })
+                }}
+            >
                 {point.subject ? point.subject.charAt(0) : 'Ö'}
         </Marker>)
-        console.log('debug', points.length, markers.length)
-        return <Map
-            ref={map => this.map = map}
-            style={'mapbox://styles/mapbox/streets-v9'} // eslint-disable-line
-            fitbounds={[[bounds.sw.lng, bounds.sw.lat],[bounds.ne.lng, bounds.ne.lat]]}
-            center={[18.290711, 57.640484]}
-            containerStyle={{
-                height: "70vh",
-                width: "100vw"
-            }}>
-            <Cluster ClusterMarkerFactory={clusterMarker}>
-                {markers}
-            </Cluster>
-        </Map>
+        return <div>
+            <ItemDrawer item={choosenPoint}/>
+            <Map
+                style={'mapbox://styles/mapbox/streets-v9'} // eslint-disable-line
+                fitbounds={[[bounds.sw.lng, bounds.sw.lat],[bounds.ne.lng, bounds.ne.lat]]}
+                center={[18.290711, 57.640484]}
+                onClick={() => this.setState({ choosenPoint: null })}
+                containerStyle={{
+                    height: "93vh",
+                    width: "100vw"
+                }}
+            >
+                <Cluster ClusterMarkerFactory={clusterMarker}>
+                    {markers}
+                </Cluster>
+                {/*{choosenPoint && <Popup*/}
+                    {/*coordinates={[choosenPoint.longitude, choosenPoint.latitude]}*/}
+                    {/*offset={{*/}
+                        {/*'bottom-left': [12, -38],  'bottom': [0, -38], 'bottom-right': [-12, -38]*/}
+                    {/*}}>*/}
+                    {/*<h4>{choosenPoint.title}</h4>*/}
+                    {/*<p>{choosenPoint.subject}</p>*/}
+                    {/*<p>{choosenPoint.type}</p>*/}
+                {/*</Popup>}*/}
+            </Map>
+        </div>
+    }
+
+    renderSubjectSelect() {
+        const { subjectsObject, choosenSubjectIndex, points } = this.state
+        const subjects = Object.keys(subjectsObject || {}).sort()
+        return subjects && <SelectField
+            floatingLabelText="Ämnen"
+            value={choosenSubjectIndex}
+            onChange={(event, newChoosenSubjectIndex, value) => {
+                console.log('newChoosenSubjectIndex', value)
+                return this.setState({
+                    choosenSubjectIndex: value,
+                })
+            }}
+        >
+            <MenuItem
+                primaryText={`Alla - ${points.length}`}
+                value={null}
+            />
+            {subjects.map((subject, index) => <MenuItem
+                key={subject}
+                value={index}
+                primaryText={`${subject} - ${subjectsObject ? subjectsObject[subject] : ''}`}
+            />)}
+        </SelectField>
+    }
+
+    renderParticipants() {
+        const { participantsMap } = this.state
+        const participants = Object.keys(participantsMap).sort().map(key => participantsMap[key][0])
+        const getP = (part) => `${part.name} - ${participantsMap ? participantsMap[part.name][1] : ''}`
+        return <div
+            style={{ display: 'flex' }}
+        >
+            <ParticipantModal participantsMap={participantsMap} />
+            <AutoComplete
+                hintText="Deltagare"
+                dataSource={participants.map(getP)}
+                onUpdateInput={(e, a, b)=> console.log('debug',e, a, b)}
+                filter={(searchText: string, key) => searchText.length > 2 && searchText.toLowerCase() !== '' && key.toLowerCase().indexOf(searchText) !== -1}
+            />
+        </div>
+    }
+
+    renderTimeSelectors() {
+        const { unixSecondsMax, unixSecondsMin,
+            choosenUnixSecondsMax, choosenUnixSecondsMin,
+        } = this.state
+        const format = 'HH:mm dddd DD/MM'
+        const minTime = unixSecondsMin && Date.now()/1000 > unixSecondsMin ? Date.now()/1000 : unixSecondsMin
+        return <div>
+            <h4>Tid</h4>
+            <p>Min tid</p>
+            <Slider
+                style={{ margin: '1em' }}
+                min={minTime}
+                max={unixSecondsMax}
+                step={3600}
+                value={choosenUnixSecondsMin || unixSecondsMin}
+                onChange={(e, time) => this.setState({ choosenUnixSecondsMin: time })}
+            />
+            {choosenUnixSecondsMin && moment(choosenUnixSecondsMin * 1000).format(format)}
+            <p>Max tid</p>
+            <Slider
+                style={{ margin: '1em' }}
+                min={minTime}
+                max={unixSecondsMax}
+                step={3600}
+                value={choosenUnixSecondsMax || unixSecondsMax}
+                onChange={(e, time: number) => this.setState({ choosenUnixSecondsMax: time })}
+            />
+            {choosenUnixSecondsMax && moment(choosenUnixSecondsMax * 1000).format(format)}
+        </div>
     }
 
     render() {
-        const { subjects, choosenSubjectIndex, points,
-            unixSecondsMax, unixSecondsMin,
-            choosenUnixSecondsMax, choosenUnixSecondsMin,
-        } = this.state
-        const choosenSubject = choosenSubjectIndex && subjects ? subjects[choosenSubjectIndex] : null
-        const filteredPoints = points
-            .filter(point => (choosenSubject ? point.subject === choosenSubject : true)
-                // && (choosenUnixSecondsMin && choosenUnixSecondsMax &&
-                //     point.date && new Date(point.date).getTime()/1000  )
-            )
-        const format = 'dddd HH:mm'
-        const minTime = unixSecondsMin && Date.now()/1000 > unixSecondsMin ? Date.now()/1000 : unixSecondsMin
+        const filteredPoints = this.filterPoints()
+
+        const content = <div>
+            <Toggle
+                style={{ width: '3em' }}
+                label="Mat"
+                onToggle={(e, res: boolean) => this.setState({
+                    food: res,
+                })}
+            />
+            {this.renderSubjectSelect()}
+            {this.renderTimeSelectors()}
+            {this.renderParticipants()}
+            <p>
+                Visar: {filteredPoints.length}
+            </p>
+        </div>
+
         return (
             <div className="App">
                 <AppBar
-                    title="Title"
+                    title={'Almedalen'}
+                    iconElementLeft={<AlmedDrawer content={content} />}
                     iconElementRight={<FlatButton label={'Download'} onClick={() => this.downloadSaveData()} />}
                 />
-                {subjects && <SelectField
-                    floatingLabelText="Ämnen"
-                    value={choosenSubjectIndex}
-                    onChange={(event, newChoosenSubjectIndex) => this.setState({
-                        choosenSubjectIndex: newChoosenSubjectIndex})
-                    }
-                >
-                    {subjects.map((subject, index) => <MenuItem
-                        key={subject}
-                        value={index}
-                        primaryText={subject}
-                    />)}
-                </SelectField>}
-                <h4>Tid</h4>
-                <p>Max tid</p>
-                <Slider
-                    style={{ margin: '1em' }}
-                    min={minTime}
-                    max={unixSecondsMax}
-                    step={3600}
-                    value={choosenUnixSecondsMin || unixSecondsMax}
-                    onChange={(e, time) => this.setState({ choosenUnixSecondsMin: time })}
-                />
-                {choosenUnixSecondsMin && moment(choosenUnixSecondsMin * 1000).format(format)}
-                <p>Min tid</p>
-                <Slider
-                    style={{ margin: '1em' }}
-                    min={minTime}
-                    max={unixSecondsMax}
-                    step={3600}
-                    value={choosenUnixSecondsMax || unixSecondsMax}
-                    onChange={(e, time: number) => this.setState({ choosenUnixSecondsMax: time })}
-                />
-                {choosenUnixSecondsMax && moment(choosenUnixSecondsMax * 1000).format(format)}
-                <p>
-                    Visar: {filteredPoints.length}
-                </p>
                 {this.renderMap(filteredPoints)}
             </div>
         );
