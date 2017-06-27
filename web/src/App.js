@@ -8,6 +8,7 @@ import ReactMapboxGl, { Cluster, Marker, Popup } from 'react-mapbox-gl'
 import moment from 'moment'
 
 import ParticipantModal from './participantModal'
+import EventsModal from './eventsModal'
 import AlmedDrawer from './drawer'
 import ItemDrawer from './itemDrawer'
 import './App.css';
@@ -332,8 +333,9 @@ class App extends Component {
     }
 
     render() {
+        const { participantsMap } = this.state
+        const buttonStyle = { color: 'white' }
         const filteredPoints = this.filterPoints()
-
         const content = <div>
             <Toggle
                 style={{ width: '3em' }}
@@ -355,7 +357,15 @@ class App extends Component {
                 <AppBar
                     title={'Almedalen'}
                     iconElementLeft={<AlmedDrawer content={content} />}
-                    iconElementRight={<FlatButton label={'Download'} onClick={() => this.downloadSaveData()} />}
+                    iconElementRight={
+                        <div
+                            style={{ display: 'flex' }}
+                        >
+                            <ParticipantModal participantsMap={participantsMap} buttonStyle={buttonStyle}/>
+                            <EventsModal events={filteredPoints} buttonStyle={buttonStyle}/>
+                            <FlatButton label={'Download'} onClick={() => this.downloadSaveData()} labelStyle={buttonStyle} />
+                        </div>
+                    }
                 />
                 {this.renderMap(filteredPoints)}
             </div>

@@ -1,18 +1,16 @@
 // @flow
 import React from 'react'
 import {
-    Dialog, FlatButton, RaisedButton, TextField,
+    Dialog, FlatButton, RaisedButton, TextField, Toggle,
     Table, TableRow, TableHeader, TableHeaderColumn, TableRowColumn, TableBody,
 } from 'material-ui'
 
-export default class ParticipantModal extends React.Component {
+export default class EventsModal extends React.Component {
     state = {
-        open: false,
+        open: true,
         sort: 'name',
-        asc: true,
         titleFilterText: '',
-        companyFilterText: '',
-        nameFilterText: '',
+        asc: true,
     }
 
     handleOpen = () => {
@@ -24,13 +22,13 @@ export default class ParticipantModal extends React.Component {
     }
 
     props: {
-        participantsMap: {[key: string]: [AlmedParticipant, number]},
+        events: Array<AlmedEvent>,
         buttonStyle?: Object,
     }
 
     render() {
-        const { participantsMap, buttonStyle } = this.props
-        const { sort, asc, open, titleFilterText, companyFilterText, nameFilterText } = this.state
+        const { events, buttonStyle } = this.props
+        const { sort, asc, open, titleFilterText } = this.state
         const actions = [
             <FlatButton
                 label="Cancel"
@@ -38,41 +36,34 @@ export default class ParticipantModal extends React.Component {
                 onTouchTap={this.handleClose}
             />,
         ]
-        let parts = Object.keys(participantsMap).sort(((p1, p2) => {
-            const part1 = participantsMap[p1]
-            const part2 = participantsMap[p2]
+        let sortedEvents = events
+            .slice(0, 30)
+            .sort(((e1: AlmedEvent, e2: AlmedEvent) => {
             const sortF = (b) => asc ? (b ? -1 : 1) : (b ? 1 : -1)
             switch(sort) {
-            case 'org':
-                return sortF(part1[0].company < part2[0].company)
-            case 'count':
-                return sortF(part1[1] < part2[1])
-            case 'name':
-            default:
-                return sortF(part1[0].name < part2[0].name)
+                case 'org':
+                    return sortF(e1.organiser < e2.organiser)
+                case 'name':
+                default:
+                    return sortF(e1.title < e2.title)
             }
         }))
         const filter = (prop: string, filterText: string) => {
             if (!filterText) {
                 return
             }
-            parts = parts
-                // .slice(0, 30)
-                .filter((key: string) => {
-                const p: ?AlmedParticipant = participantsMap[key][0]
-                if (!p || !p[prop]) {
+            sortedEvents = sortedEvents.filter((event: AlmedEvent) => {
+                if (!event[prop]) {
                     return false
                 }
-                return filterText.length > 2 && filterText.toLowerCase() !== '' && p[prop].toLowerCase().indexOf(filterText) !== -1
+                return filterText.length > 2 && filterText.toLowerCase() !== '' && event[prop].toLowerCase().indexOf(filterText) !== -1
             })
         }
         filter('title', titleFilterText)
-        filter('company', companyFilterText)
-        filter('name', nameFilterText)
 
         return (
             <div style={{ marginRight: '1em' }}>
-                <FlatButton label="Participants" onTouchTap={this.handleOpen} labelStyle={buttonStyle} />
+                <FlatButton label="Seminars" onTouchTap={this.handleOpen} labelStyle={buttonStyle} />
                 <Dialog
                     title="Alla deltagare"
                     actions={actions}
@@ -85,16 +76,8 @@ export default class ParticipantModal extends React.Component {
                         style={{ display: 'flex', justifyContent: 'spaceBetween'}}
                     >
                         <TextField
-                            hintText="Filter name"
-                            onChange={(e, text) => this.setState({ nameFilterText: text })}
-                        />
-                        <TextField
                             hintText="Filter title"
                             onChange={(e, text) => this.setState({ titleFilterText: text })}
-                        />
-                        <TextField
-                            hintText="Filter company"
-                            onChange={(e, text) => this.setState({ companyFilterText: text })}
                         />
                     </div>
                     <Table
@@ -107,19 +90,10 @@ export default class ParticipantModal extends React.Component {
                             <TableRow
                                 onCellClick={(event, a, b) => {
                                     console.log('debug', b, asc, sort)
-                                    let s = 'name'
+                                    let s = 'title'
                                     switch (b) {
-                                    case 1:
-                                        s = 'name'
-                                        break
-                                    case 3:
-                                        s = 'org'
-                                        break
-                                    case 4:
-                                        s = 'count'
-                                        break
-                                    default:
-                                        break
+                                        default:
+                                            break
                                     }
                                     this.setState({
                                         sort: s,
@@ -127,24 +101,29 @@ export default class ParticipantModal extends React.Component {
                                     })
                                 }}
                             >
-                                <TableHeaderColumn>Name</TableHeaderColumn>
                                 <TableHeaderColumn>Title</TableHeaderColumn>
                                 <TableHeaderColumn>Company</TableHeaderColumn>
+                                <TableHeaderColumn>Participants</TableHeaderColumn>
                                 <TableHeaderColumn>Participates in (no.)</TableHeaderColumn>
                             </TableRow>
                         </TableHeader>
                         <TableBody
                             displayRowCheckbox={false}
                         >
-                            {parts.map(key => {
-                                const p: [AlmedParticipant, number] = participantsMap[key]
+                            {sortedEvents.map((event: AlmedEvent) => {
                                 return <TableRow
-                                    key={`${p[0].name}`}
+                                    key={`${event.id}`}
                                 >
-                                    <TableRowColumn><b>{p[0].name}</b></TableRowColumn>
-                                    <TableRowColumn>{p[0].title}</TableRowColumn>
-                                    <TableRowColumn>{p[0].company}</TableRowColumn>
-                                    <TableRowColumn>{p[1]}</TableRowColumn>
+                                    <TableRowColumn>{event.title}</TableRowColumn>
+                                    <TableRowColumn tooltip="hej" >{event.organiser}</TableRowColumn>
+                                    <TableRowColumn>{(event.participants || []).reduce((acc, part) => acc + `${part.name}, ${part.title}, ${part.company} \n`, '')}</TableRowColumn>
+                                    <TableRowColumn>
+                                        {event.food && <Toggle
+                                            label="Food"
+                                            defaultToggled={event.food}
+                                            disabled={!event.food}
+                                        />}
+                                    </TableRowColumn>
                                 </TableRow>
                             })}
                         </TableBody>
