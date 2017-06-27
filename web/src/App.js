@@ -4,18 +4,18 @@ import {
     FlatButton, AppBar, SelectField, MenuItem, Slider, AutoComplete, Toggle
 } from 'material-ui';
 import injectTapEventPlugin from 'react-tap-event-plugin'
-import ReactMapboxGl, { Cluster, Marker, Popup } from 'react-mapbox-gl'
+import ReactMapboxGl, { Cluster, Marker } from 'react-mapbox-gl'
 import moment from 'moment'
 
 import ParticipantModal from './participantModal'
 import EventsModal from './eventsModal'
+import CalendarModal from './calendarModal'
 import AlmedDrawer from './drawer'
 import ItemDrawer from './itemDrawer'
-import './App.css';
 
 // Needed for onTouchTap
 // http://stackoverflow.com/a/34015469/988941
-injectTapEventPlugin();
+injectTapEventPlugin()
 
 type Coord = {
     lat: number,
@@ -203,6 +203,7 @@ class App extends Component {
                 justifyContent: 'center',
                 alignItems: 'center',
                 border: '2px solid #C9C9C9',
+                cursor: 'pointer',
             }
         }
         const clusterMarker = (coordinates: Array<number>, pointCount: number) => <Marker
@@ -362,7 +363,8 @@ class App extends Component {
                             style={{ display: 'flex' }}
                         >
                             <ParticipantModal participantsMap={participantsMap} buttonStyle={buttonStyle}/>
-                            <EventsModal events={filteredPoints} buttonStyle={buttonStyle}/>
+                            <EventsModal events={filteredPoints} buttonStyle={buttonStyle} />
+                            <CalendarModal events={filteredPoints} buttonStyle={buttonStyle} />
                             <FlatButton label={'Download'} onClick={() => this.downloadSaveData()} labelStyle={buttonStyle} />
                         </div>
                     }

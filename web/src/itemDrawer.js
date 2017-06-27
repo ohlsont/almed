@@ -1,13 +1,14 @@
-import React from 'react';
-import { Drawer, Card, CardHeader, IconButton } from 'material-ui'
-import NavigationClose from 'material-ui/svg-icons/navigation/close'
+import React from 'react'
+import { Drawer, Card, CardHeader } from 'material-ui'
 import moment from 'moment'
 
 const ItemDrawer = (props: { item: ?AlmedEvent }) => <Drawer
     openSecondary={true}
     open={!!props.item}
 >
-    {!!props.item && <div>
+    {!!props.item && <div
+        style={{ padding: '1em' }}
+    >
         {/*<IconButton onClick={() => }><NavigationClose /></IconButton>*/}
         <h3>{props.item.title}</h3>
         <p>{props.item.organiser}</p>

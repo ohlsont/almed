@@ -1,7 +1,7 @@
 // @flow
 import React from 'react'
 import {
-    Dialog, FlatButton, RaisedButton, TextField,
+    Dialog, FlatButton, TextField,
     Table, TableRow, TableHeader, TableHeaderColumn, TableRowColumn, TableBody,
 } from 'material-ui'
 
