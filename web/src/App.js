@@ -1,7 +1,8 @@
 // @flow
 import React, { Component } from 'react';
 import {
-    FlatButton, AppBar, SelectField, MenuItem, Slider, AutoComplete, Toggle
+    FlatButton, AppBar, SelectField, MenuItem,
+    Slider, AutoComplete, Toggle, CircularProgress
 } from 'material-ui';
 import injectTapEventPlugin from 'react-tap-event-plugin'
 import ReactMapboxGl, { Cluster, Marker } from 'react-mapbox-gl'
@@ -63,7 +64,12 @@ class App extends Component {
         const bounds = points.reduce((boundsAcc, point: AlmedEvent) => {
             const la = parseFloat(point.latitude)
             const lo = parseFloat(point.longitude)
-            if (point.subject) subjectsObject[point.subject] = subjectsObject[point.subject] ? subjectsObject[point.subject] + 1 : 1
+            if (point.subject && point.subject.length) {
+                console.log('debug', point.subject)
+                point.subject.forEach(sub => {
+                    subjectsObject[sub] = subjectsObject[sub] ? subjectsObject[sub] + 1 : 1
+                })
+            }
             if (point.participants && point.participants.length) {
                 point.participants.forEach(part => {
                     const p: ?[AlmedParticipant, number] = participantsMap[part.name]
@@ -192,7 +198,7 @@ class App extends Component {
                     })
                 }}
             >
-                {point.subject ? point.subject.charAt(0) : 'Ö'}
+                {point.subject && point.subject.length ? point.subject[0].charAt(0) : 'Ö'}
         </Marker>)
         return <div>
             <ItemDrawer item={choosenPoint}/>
@@ -354,7 +360,12 @@ class App extends Component {
                             <ParticipantModal participantsMap={participantsMap} buttonStyle={buttonStyle}/>
                             <EventsModal events={filteredPoints} buttonStyle={buttonStyle} />
                             <CalendarModal events={filteredPoints} buttonStyle={buttonStyle} />
-                            <FlatButton label={'Download'} onClick={() => this.downloadSaveData()} labelStyle={buttonStyle} />
+                            <FlatButton
+                                label={'Download'}
+                                onClick={() => this.downloadSaveData()}
+                                labelStyle={buttonStyle}
+                                icon={<CircularProgress />}
+                            />
                         </div>
                     }
                 />

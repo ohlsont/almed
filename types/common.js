@@ -7,7 +7,7 @@ type AlmedParticipant = {
 type AlmedEvent = {
     id: string,
     title: string,
-    organiser?: ?string,
+    organiser: string,
     date: ?string,
     endDate: ?string,
     type: string,

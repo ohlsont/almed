@@ -46,6 +46,6 @@ export async function get(key: string): Promise<any> {
 export async function getCollection(key: string): Promise<any> {
   const query = datastore.createQuery(key)
   const res = await datastore.runQuery(query)
-  console.log('debug', res[0].length)
+  console.log('got from remote', res[0].length)
   return res[0]
 }

@@ -1,6 +1,18 @@
 // @flow
+
+const eventsKey = 'items'
+const dbVersionKey = 'dbVersion'
+const currentVersion = '2'
 export default class Events {
-    static async fetchJson(method: string, url: string, body?: string): Promise<any> {
+    static migrateDB() {
+        const version: ?string = localStorage.getItem(dbVersionKey)
+        if (version !== currentVersion) {
+            localStorage.setItem(dbVersionKey, currentVersion)
+            localStorage.setItem(eventsKey, '[]')
+        }
+    }
+
+    static async fetchJson(method, url: string, body?: string): Promise<any> {
         const resp = await fetch(url, {
             method,
             headers: {
@@ -28,6 +40,7 @@ export default class Events {
     }
 
     static async saveData(): Promise<Array<AlmedEvent>> {
+        console.log('gettingItemsFromServer')
         const allData: Array<AlmedEvent> = await Events.fetchJson(
             'GET',
             'http://localhost:8080',
@@ -39,7 +52,7 @@ export default class Events {
     }
 
     static getPersistentEvents(): Array<AlmedEvent> {
-        const items = localStorage.getItem('items')
+        const items = localStorage.getItem(eventsKey)
         if (!items || items === 'undefined') {
             console.warn('no events')
             return []

@@ -45,6 +45,24 @@ routes.get('/empty', async (req, res) => {
   res.sendStatus(200)
 })
 
+routes.get('/migrate', async (req, res) => {
+  const allEvents = await getCollection(dataKey)
+  allEvents.map(event => {
+    if (!Array.isArray(event.subject)) {
+      event.subject = [event.subject]
+    }
+
+    if (!Array.isArray(event.web)) {
+      event.web = [event.web]
+    }
+
+    return event
+  })
+  await add(dataKey, allEvents)
+  res.sendStatus(200)
+})
+
+
 routes.get('/update', async (req, res) => {
   const allData = await getEvents()
   console.log('inserting items: ', allData.length)

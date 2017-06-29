@@ -202,7 +202,7 @@ export async function getItem(href: string, mapMapPoints: {[key: string]: MapPoi
     const green = filterFunc('Grönt evenemang:')
 
 
-    const organiser: ?string = filterFunc('Arrangör:')
+    const organiser: string = filterFunc('Arrangör:') || ''
     const eventResult: AlmedEvent = {
       id,
       title: (article.attributes || {}).titel,
