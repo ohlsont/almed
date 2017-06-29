@@ -7,11 +7,8 @@ import injectTapEventPlugin from 'react-tap-event-plugin'
 import ReactMapboxGl, { Cluster, Marker } from 'react-mapbox-gl'
 import moment from 'moment'
 
-import ParticipantModal from './participantModal'
-import EventsModal from './eventsModal'
-import CalendarModal from './calendarModal'
-import AlmedDrawer from './drawer'
-import ItemDrawer from './itemDrawer'
+import { EventsModal, ParticipantModal, CalendarModal, ItemDrawer, AlmedDrawer } from './components'
+import { Events } from './services'
 
 // Needed for onTouchTap
 // http://stackoverflow.com/a/34015469/988941
@@ -25,7 +22,7 @@ type Coord = {
 type Appstate = {
     points: Array<AlmedEvent>,
     participantsMap: {[key: string]: [AlmedParticipant, number]},
-    choosenPoint?: AlmedEvent,
+    choosenPoint?: ?AlmedEvent,
 
     choosenParticipant?: AlmedParticipant,
     subjectsObject?: {[key: string]: number},
@@ -58,40 +55,11 @@ class App extends Component {
         },
     }
 
-    static async fetchJson(method: string, url: string, body?: string): Promise<any> {
-        const resp = await fetch(url, {
-            method,
-            headers: {
-                'Content-Type': 'application/json',
-                'Access-Control-Allow-Origin': '*',
-            },
-            body,
-        })
-
-        switch (resp.status) {
-            case 204:
-                return {}
-            case 401:
-                throw new Error('bad permissions, 401 response code')
-            default:
-                break
-        }
-
-        if (!resp.ok) {
-            console.log('response is not ok ', resp)
-            throw new Error(`bad response from server ${resp.status}`)
-        }
-
-        return resp.json()
-    }
-
     componentWillMount() {
-        const items = localStorage.getItem('items')
-        if (!items || items === 'undefined') return
-        const points: Array<AlmedEvent> = JSON.parse(items)
+        const points = Events.getPersistentEvents()
         const subjectsObject = {}
         const times = []
-        const participantsMap: {[key: string]: AlmedParticipant} = {}
+        const participantsMap: {[key: string]: [AlmedParticipant, number]} = {}
         const bounds = points.reduce((boundsAcc, point: AlmedEvent) => {
             const la = parseFloat(point.latitude)
             const lo = parseFloat(point.longitude)
@@ -142,13 +110,7 @@ class App extends Component {
 
     map: any
     async downloadSaveData(): Promise<void> {
-        const allData: Array<AlmedEvent> = await App.fetchJson(
-            'GET',
-            'http://localhost:8080',
-            // 'https://almed-171122.appspot.com/',
-        )
-        console.log('items gotten from server', allData)
-        localStorage.setItem('items', JSON.stringify(allData))
+        const allData = await Events.saveData()
         this.setState({ points: allData })
     }
 
@@ -333,6 +295,32 @@ class App extends Component {
         </div>
     }
 
+    renderDaySelector() {
+        const { points } = this.state
+        const format = 'YYYY-MM-DDTHH:mm:ss'
+        const days = (points || [])
+            .reduce((acc, point) => {
+                if (point.date && !acc[moment(point.date, format).startOf('day').format()]) {
+                    acc[moment(point.date, format).startOf('day').format()] = true
+                }
+                return acc
+            }, {})
+        const dayKeys = Object.keys(days)
+        return !!dayKeys.length && <SelectField
+            floatingLabelText="Day"
+            value={dayKeys[0]}
+            onChange={(e, value) => console.log('debug', value)}
+            floatingLabelStyle={{color:'white'}}
+            labelStyle={{
+                color:'white',
+                WebkitTextFillColor: 'white',
+                WebkitTapHighlightColor: 'white',
+            }}
+        >
+            {dayKeys.map((key) => <MenuItem key={key} value={key} primaryText={moment(key).format('dddd DD/MM')} />)}
+        </SelectField>
+    }
+
     render() {
         const { participantsMap } = this.state
         const buttonStyle = { color: 'white' }
@@ -362,6 +350,7 @@ class App extends Component {
                         <div
                             style={{ display: 'flex' }}
                         >
+                            {this.renderDaySelector()}
                             <ParticipantModal participantsMap={participantsMap} buttonStyle={buttonStyle}/>
                             <EventsModal events={filteredPoints} buttonStyle={buttonStyle} />
                             <CalendarModal events={filteredPoints} buttonStyle={buttonStyle} />

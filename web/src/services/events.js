@@ -1,0 +1,55 @@
+// @flow
+export default class Events {
+    static async fetchJson(method: string, url: string, body?: string): Promise<any> {
+        const resp = await fetch(url, {
+            method,
+            headers: {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*',
+            },
+            body,
+        })
+
+        switch (resp.status) {
+            case 204:
+                return {}
+            case 401:
+                throw new Error('bad permissions, 401 response code')
+            default:
+                break
+        }
+
+        if (!resp.ok) {
+            console.log('response is not ok ', resp)
+            throw new Error(`bad response from server ${resp.status}`)
+        }
+
+        return resp.json()
+    }
+
+    static async saveData(): Promise<Array<AlmedEvent>> {
+        const allData: Array<AlmedEvent> = await Events.fetchJson(
+            'GET',
+            'http://localhost:8080',
+            // 'https://almed-171122.appspot.com/',
+        )
+        console.log('items gotten from server', allData)
+        localStorage.setItem('items', JSON.stringify(allData))
+        return allData
+    }
+
+    static getPersistentEvents(): Array<AlmedEvent> {
+        const items = localStorage.getItem('items')
+        if (!items || items === 'undefined') {
+            console.warn('no events')
+            return []
+        }
+        const events: Array<AlmedEvent> = JSON.parse(items)
+        return events
+    }
+
+    static eventsForParticipant(participant: AlmedParticipant): Array<AlmedEvent> {
+        const events = Events.getPersistentEvents()
+        return events.filter(event => event.participants.some(part => part.name === participant.name))
+    }
+}

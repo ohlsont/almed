@@ -7,14 +7,14 @@ import moment from 'moment'
 import BigCalendar from 'react-big-calendar'
 import 'react-big-calendar/lib/css/react-big-calendar.css'
 
-import Favorites from './favorites'
+import Favorites from '../services/favorites'
 
 BigCalendar.momentLocalizer(moment)
 let allViews = Object.keys(BigCalendar.views).map(k => BigCalendar.views[k])
 
 export default class CalendarModal extends React.Component {
     state = {
-        open: true,
+        open: false,
     }
 
     handleOpen = () => {

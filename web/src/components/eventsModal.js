@@ -8,7 +8,8 @@ import Star from 'material-ui/svg-icons/toggle/star'
 import Check from 'material-ui/svg-icons/navigation/check'
 import moment from 'moment'
 
-import Favorites from './favorites'
+import { Favorites } from '../services'
+import { EventItem } from './'
 
 const customContentStyle = {
     width: '98%',
@@ -16,13 +17,37 @@ const customContentStyle = {
 }
 const timeFormat = 'HH:mm dddd DD/MM'
 
+class EventModal extends React.Component {
+    state = { open: false }
+    props: {
+        item?: ?AlmedEvent,
+        onClose: ()=>void,
+    }
+
+    render() {
+        const { item, onClose } = this.props
+        console.log('showing event', item)
+        return <Dialog
+            title={(item || {}).title}
+            modal={false}
+            open={!!item}
+            autoScrollBodyContent={true}
+            onRequestClose={() => onClose()}
+        >
+            <EventItem item={item} />
+        </Dialog>
+    }
+}
+
 export default class EventsModal extends React.Component {
     state = {
         open: false,
+        choosenEvent: null,
         sort: 'name',
         titleFilterText: '',
         participantFilterText: '',
         foodFilter: false,
+        onlyFavs: false,
         orgFilterText: '',
         asc: true,
         favs: Favorites.all(),
@@ -33,12 +58,20 @@ export default class EventsModal extends React.Component {
     }
 
     handleClose = () => {
-        this.setState({open: false})
+        const { withOutButton, onCloseCallback } = this.props
+        if (!withOutButton) {
+            this.setState({open: false})
+        }
+
+        if (onCloseCallback) onCloseCallback()
     }
 
     props: {
         events: Array<AlmedEvent>,
+        choosenEvent?: AlmedEvent,
         buttonStyle?: Object,
+        withOutButton?: boolean,
+        onCloseCallback?: () => void
     }
 
     handleToggle(event: AlmedEvent) {
@@ -53,10 +86,9 @@ export default class EventsModal extends React.Component {
     }
 
     render() {
-        const { events, buttonStyle } = this.props
-        const { sort, asc, open,
-            titleFilterText, orgFilterText, foodFilter,
-            favs } = this.state
+        const { events, buttonStyle, withOutButton } = this.props
+        const { sort, asc, open, choosenEvent, titleFilterText,
+            orgFilterText, foodFilter, onlyFavs, favs } = this.state
         const actions = [
             <FlatButton
                 label="Cancel"
@@ -71,7 +103,7 @@ export default class EventsModal extends React.Component {
             switch(sort) {
                 case 'time':
                     if (!e1.date || !e2.date) {
-                        console.log('missing date')
+                        console.log('missing date', e2.url, e1.url)
                         return -1
                     }
                     const a = new Date(e1.date).getTime()
@@ -92,7 +124,7 @@ export default class EventsModal extends React.Component {
                 if (!event[prop]) {
                     return false
                 }
-                return filterText.length > 2 && filterText.toLowerCase() !== '' && event[prop].toLowerCase().indexOf(filterText) !== -1
+                return filterText.toLowerCase() !== '' && event[prop].toLowerCase().indexOf(filterText) !== -1
             })
         }
         filter('title', titleFilterText)
@@ -102,24 +134,35 @@ export default class EventsModal extends React.Component {
             sortedEvents = sortedEvents.filter(event => event.food)
         }
 
+        if (onlyFavs) {
+            sortedEvents = sortedEvents
+                .filter((event: AlmedEvent) => favs
+                    .some((fav: AlmedEvent) => fav.id === event.id))
+        }
+
         const favMap = favs.reduce((arr, fav) => {
             arr[fav.id] = fav
             return arr
         }, {})
 
         const smallRowWidth = 20
+        const limit = 100
         return (
             <div style={{ marginRight: '1em' }}>
-                <FlatButton label="Seminars" onTouchTap={this.handleOpen} labelStyle={buttonStyle} />
+                {!withOutButton && <FlatButton label="Seminars" onTouchTap={this.handleOpen} labelStyle={buttonStyle} />}
                 <Dialog
-                    title="All seminars"
+                    title={`All seminars (showing ${limit})`}
                     actions={actions}
                     modal={false}
-                    open={open}
+                    open={withOutButton ? !!events.length : open}
                     autoScrollBodyContent={true}
                     onRequestClose={this.handleClose}
                     contentStyle={customContentStyle}
                 >
+                    <EventModal
+                        item={choosenEvent}
+                        onClose={() => this.setState({ choosenEvent: null })}
+                    />
                     <div
                         style={{ display: 'flex', justifyContent: 'spaceBetween'}}
                     >
@@ -135,6 +178,11 @@ export default class EventsModal extends React.Component {
                             style={{ width: 20 }}
                             label="Food"
                             onToggle={(e, value) => this.setState({ foodFilter: value })}
+                        />
+                        <Toggle
+                            style={{ width: 20 }}
+                            label="Only favs"
+                            onToggle={(e, value) => this.setState({ onlyFavs: value })}
                         />
                     </div>
                     <Table
@@ -178,9 +226,15 @@ export default class EventsModal extends React.Component {
                         <TableBody
                             displayRowCheckbox={false}
                         >
-                            {sortedEvents.map((event: AlmedEvent) => {
+                            {sortedEvents.slice(0, limit).map((event: AlmedEvent) => {
                                 return <TableRow
                                     key={`${event.id}`}
+                                    onMouseUp={() => {
+                                        this.setState({
+                                            // $FlowFixMe
+                                            choosenEvent: event,
+                                        })
+                                    }}
                                 >
                                     <TableRowColumn>{event.title}</TableRowColumn>
                                     <TableRowColumn>{moment(event.date).format(timeFormat)}</TableRowColumn>

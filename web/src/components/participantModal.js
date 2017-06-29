@@ -5,6 +5,9 @@ import {
     Table, TableRow, TableHeader, TableHeaderColumn, TableRowColumn, TableBody,
 } from 'material-ui'
 
+import { EventsModal } from './'
+import { Events } from '../services'
+
 export default class ParticipantModal extends React.Component {
     state = {
         open: false,
@@ -13,6 +16,7 @@ export default class ParticipantModal extends React.Component {
         titleFilterText: '',
         companyFilterText: '',
         nameFilterText: '',
+        choosenEvents: [],
     }
 
     handleOpen = () => {
@@ -30,7 +34,7 @@ export default class ParticipantModal extends React.Component {
 
     render() {
         const { participantsMap, buttonStyle } = this.props
-        const { sort, asc, open, titleFilterText, companyFilterText, nameFilterText } = this.state
+        const { sort, asc, open, titleFilterText, companyFilterText, nameFilterText, choosenEvents } = this.state
         const actions = [
             <FlatButton
                 label="Cancel"
@@ -63,18 +67,19 @@ export default class ParticipantModal extends React.Component {
                 if (!p || !p[prop]) {
                     return false
                 }
-                return filterText.length > 2 && filterText.toLowerCase() !== '' && p[prop].toLowerCase().indexOf(filterText) !== -1
+                return filterText.toLowerCase() !== '' && p[prop].toLowerCase().indexOf(filterText) !== -1
             })
         }
         filter('title', titleFilterText)
         filter('company', companyFilterText)
         filter('name', nameFilterText)
 
+        const limit =  100
         return (
             <div style={{ marginRight: '1em' }}>
                 <FlatButton label="Participants" onTouchTap={this.handleOpen} labelStyle={buttonStyle} />
                 <Dialog
-                    title="Alla deltagare"
+                    title={`All participants (showing ${limit})`}
                     actions={actions}
                     modal={false}
                     open={open}
@@ -136,10 +141,14 @@ export default class ParticipantModal extends React.Component {
                         <TableBody
                             displayRowCheckbox={false}
                         >
-                            {parts.map(key => {
+                            {parts.slice(0, limit).map(key => {
                                 const p: [AlmedParticipant, number] = participantsMap[key]
                                 return <TableRow
                                     key={`${p[0].name}`}
+                                    onMouseUp={(event, a, b) => {
+                                        console.log('clicked part', key, p)
+                                        this.setState({ choosenEvents: Events.eventsForParticipant(p[0]) })
+                                    }}
                                 >
                                     <TableRowColumn><b>{p[0].name}</b></TableRowColumn>
                                     <TableRowColumn>{p[0].title}</TableRowColumn>
@@ -149,6 +158,11 @@ export default class ParticipantModal extends React.Component {
                             })}
                         </TableBody>
                     </Table>
+                    <EventsModal
+                        events={choosenEvents || []}
+                        withOutButton={true}
+                        onCloseCallback={() => this.setState({ choosenEvents: [] })}
+                    />
                 </Dialog>
             </div>
         );
