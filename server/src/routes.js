@@ -2,7 +2,7 @@
 import { Router } from 'express'
 
 import { getCollection, add, del } from './storage'
-import { getEvents, getMapPoints, getIds, getItem, getParsedItem } from './almed'
+import { getEvents, getMapPoints, getIds, getItem, getParsedItem, traverseTree } from './almed'
 
 const routes: any = Router()
 
@@ -20,24 +20,18 @@ routes.get('/ids', async (req, res) => {
   res.json((await getIds()).sort())
 })
 
+routes.get('/debugPureItem/:id', async (req: any, res) => {
+  const id = req.params.id
+  const item = await getParsedItem(id)
+  res.json(item)
+})
+
 routes.get('/debugItem/:id', async (req: any, res) => {
   const id = req.params.id
   const item = await getParsedItem(id)
   // recursive parsed data cleaner
-  const f = (item: Object, order: number = 0, child: number = 0) => {
-    const res = {}
-    res.order = order
-    res.child = child
-    if (item.type === 'Text' && item.content.match(/[a-z]/i)) {
-      res.content = item.content
-    }
-    if (item.children) {
-      const c = item.children.map((e, index) => f(e, order + 1, index))
-      if (c.length) res.children = c.filter(e => (e.children && e.children.length )|| e.content)
-    }
-    return res
-  }
-  res.json(f(item[2]))
+  const ress = traverseTree({ children: item }, (tree2) => !!tree2.attributes && tree2.attributes.id === 'event')
+  res.json(ress)
 })
 
 routes.get('/item/:id', async (req: any, res) => {

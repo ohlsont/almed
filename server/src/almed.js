@@ -13,6 +13,17 @@ type MapPoint = {
   LATITUDE: string,
 }
 
+type HTMLTreeChild = {
+  type?: string,
+  tagName?: string,
+  content?: string,
+  attributes?: {
+    id: string,
+    titel: string,
+  },
+  children: Array<HTMLTreeChild>,
+}
+
 export async function getEvents(): Promise<Array<?AlmedEvent>> {
   const ids: Array<string> = await getIds()
   const mapPoints = await getMapPoints()
@@ -30,7 +41,7 @@ export async function getEvents(): Promise<Array<?AlmedEvent>> {
       return getItem(id, mapMapPoints)
     }))
     await sleep(3000)
-    res.push(...eventsChunk.filter(e => e))
+    res.push(...eventsChunk.filter(Boolean))
   }
   return res
 }
@@ -68,6 +79,22 @@ const applyChildren = (json: Object, arr: Array<number>, withContent: boolean = 
   const res = arr.reduce((acc, item) => acc.children && acc.children[item] ? acc.children[item] : {}, json)
   return withContent ? removeFirstSpace(res.content) : res
 }
+
+export const traverseTree = (
+  tree: HTMLTreeChild,
+  func: (tree2: HTMLTreeChild)=>boolean
+) => {
+  if (func(tree)) {
+    return tree
+  }
+  let res
+  (tree.children || []).some(child => {
+    res = traverseTree(child, func)
+    return !!res
+  })
+  return res
+}
+
 export async function getIds(): Promise<Array<string>> {
   const url = 'https://almedalsguiden.com/main/search'
   const resp = await fetch(url, {
@@ -101,8 +128,9 @@ export async function getIds(): Promise<Array<string>> {
   }
   const res = await resp.text()
   const json = himalaya.parse(res)
+
   const elements = applyChildren(json[2], [3,5,5,1,3], false).children
-  return [...new Set(elements.map(elem => elem.attributes ? elem.attributes.href : null).filter(e => e))]
+  return [...new Set(elements.map(elem => elem.attributes ? elem.attributes.href : null).filter(Boolean))]
 }
 
 export async function getParsedItem(id: string): Promise<Array<any>> {
@@ -118,7 +146,26 @@ export async function getItem(href: string, mapMapPoints: {[key: string]: MapPoi
   const mapPoint = mapMapPoints[id] || {}
   try {
     const json = await getParsedItem(id)
-    const itemContent = applyChildren(json[2], [3,5,5,3], false)
+    const article: ?HTMLTreeChild = traverseTree({ children: json }, (tree2) => !!tree2.attributes && tree2.attributes.id === 'event')
+    if (!article) {
+      console.warn('no child found')
+      return
+    }
+    // console.log('article', article, (article.attributes || {}))
+    const itemContent = article
+
+    const filterFunc = (filterFor: string): ?string => {
+      const item = traverseTree(article, (tree: HTMLTreeChild) => {
+        const child = applyChildren(tree, [0, 0])
+        return !!child && child === filterFor
+      })
+      if (!item || !item.children || !item.children[1]) {
+        return null
+      }
+      const r = (item.children[1] || {}).content
+      return r ? removeFirstSpace(r) : null
+    }
+
     const p: ?Array<any> = applyChildren(itemContent, [9], false).children
     let participants = []
     if (p) {
@@ -134,7 +181,7 @@ export async function getItem(href: string, mapMapPoints: {[key: string]: MapPoi
     }
 
 
-    const dd = applyChildren(itemContent, [3,3,1])
+    const dd = filterFunc('Dag:')
     let endDate = null
     let date = null
     if (dd) {
@@ -150,34 +197,42 @@ export async function getItem(href: string, mapMapPoints: {[key: string]: MapPoi
       }
     }
 
-    const live = applyChildren(itemContent, [11,5,1])
-    const food = applyChildren(itemContent, [11,7,1])
-    const green = applyChildren(itemContent, [11,1,1])
-    return {
+    const live = filterFunc('Direktsänds på internet:')
+    const food = filterFunc('Förtäring:')
+    const green = filterFunc('Grönt evenemang:')
+
+
+    const organiser: ?string = filterFunc('Arrangör:')
+    const eventResult: AlmedEvent = {
       id,
-      title: applyChildren(itemContent, [1,0]),
-      organiser: applyChildren(itemContent, [3,1,1]),
+      title: (article.attributes || {}).titel,
+      organiser,
       date: date ? date.format() : null,
       endDate: endDate ? endDate.format() : null,
-      type: applyChildren(itemContent, [5,1,1]),
-      subject: applyChildren(itemContent, [5,3,1]),
-      language: applyChildren(itemContent, [5,5,1]),
-      location: applyChildren(itemContent, [5,7,1]),
-      locationDescription: applyChildren(itemContent, [5,9,1]),
+      type: filterFunc('Typ:') || '',
+      subject: [filterFunc('Ämnesområde:'), filterFunc('Ämnesområde 2:')].filter(Boolean),
+      language: filterFunc('Språk:') || '',
+      location: filterFunc('Plats:') || '',
+      locationDescription: filterFunc('Platsbeskrivning:') || '',
       description: applyChildren(itemContent, [7,0]),
       latitude: parseFloat(mapPoint.LATITUDE),
       longitude: parseFloat(mapPoint.LONGITUDE),
       participants,
       green: !!(green && green.includes('Ja')),
-      availabilty: applyChildren(itemContent, [11,3,1]),
+      availabilty: filterFunc('Tillgänglighet:') || '',
       live: !!(live && live.includes('Ja')),
       food: !!(food && food.includes('Ja')),
-      web: applyChildren(itemContent, [13,1,0,0]),
+      web: applyChildren(itemContent, [13], false).children
+        .reduce((acc, child: HTMLTreeChild) => acc.concat(child.children), [])
+        .filter(Boolean)
+        .map(child => (child.attributes || {}).href),
       url: `https://almedalsguiden.com/event/${id}`,
       // contact: applyChildren(itemContent, [15,1,1,0,0]),
       // contactOrg: applyChildren(itemContent, [15,1,1]),
       // contactNumber: applyChildren(itemContent, [6,1,1]),
     }
+
+    return eventResult
   } catch (error) {
       console.error('try get event ', error)
       return null

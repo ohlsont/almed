@@ -50,7 +50,7 @@ export default class CalendarModal extends React.Component {
                 end: new Date(event.endDate),
                 desc: event.description,
             }
-        }).filter(e => e)
+        }).filter(Boolean)
 
         return (
             <div style={{ marginRight: '1em' }}>
@@ -75,7 +75,7 @@ export default class CalendarModal extends React.Component {
                             startAccessor='start'
                             endAccessor='end'
                             views={allViews}
-                            defaultDate={new Date(Math.min(...calendarEvents.map(e => e.start.getTime()).filter(e => e)))}
+                            defaultDate={new Date(Math.min(...calendarEvents.map(e => e.start.getTime()).filter(Boolean)))}
                         />
                     </div>
                 </Dialog>

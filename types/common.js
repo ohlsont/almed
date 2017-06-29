@@ -7,11 +7,11 @@ type AlmedParticipant = {
 type AlmedEvent = {
     id: string,
     title: string,
-    organiser: string,
+    organiser?: ?string,
     date: ?string,
     endDate: ?string,
     type: string,
-    subject: string,
+    subject: Array<string>,
     language: string,
     location: string,
     locationDescription: string,
@@ -23,6 +23,6 @@ type AlmedEvent = {
     availabilty: string,
     live: boolean,
     food: boolean,
-    web: string,
+    web: Array<string>,
     url: string,
 }
