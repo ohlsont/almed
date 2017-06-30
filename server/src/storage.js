@@ -1,13 +1,56 @@
 // @flow
 import Datastore from '@google-cloud/datastore'
+import Redis from 'ioredis'
 
 import { makeChunks } from './utils'
 
+export async function add(dataKey: string, data: any): Promise<any> {
+  return addRedis(dataKey, data)
+}
+
+export async function del(key: string): Promise<void> {
+  return delRedis(key)
+}
+
+export async function get(key: string): Promise<any> {
+  return getRedis(key)
+}
+
+// redis
+const redisClient = new Redis()
+async function addRedis(dataKey: string, data: any): Promise<any> {
+  return new Promise((r, re) => {
+    redisClient.set(dataKey, JSON.stringify(data), (err, result) => {
+      if (err) {
+        re(err)
+        return
+      }
+      r(result)
+    })
+  })
+}
+
+async function delRedis(key: string): Promise<void> {
+  return addRedis(key, null)
+}
+
+async function getRedis(key: string): Promise<any> {
+  return new Promise((r, re) => {
+    redisClient.get(key, (err, result) => {
+      if (err) {
+        re(err)
+        return
+      }
+      r(JSON.parse(result))
+    })
+  })
+}
+
+// Google datastore
 const datastore = Datastore()
 
 const getKey = (key: string, id: string = 'data') => datastore.key([key, id])
-
-export async function add(dataKey: string, data: Array<any>): Promise<any> {
+async function addGAE(dataKey: string, data: Array<any>): Promise<any> {
   const entitys = data.map(d => ({
     key: getKey(dataKey, d.id),
     data: Object.keys(d)
@@ -26,7 +69,7 @@ export async function add(dataKey: string, data: Array<any>): Promise<any> {
   return dataKey
 }
 
-export async function del(key: string): Promise<void> {
+async function delGAE(key: string): Promise<void> {
   const col = await getCollection(key)
   const transaction = datastore.transaction()
 
@@ -39,7 +82,7 @@ export async function del(key: string): Promise<void> {
   console.log('delete result')
 }
 
-export async function get(key: string): Promise<any> {
+async function getGAE(key: string): Promise<any> {
   return await datastore.get(getKey(key))
 }
 
