@@ -9,6 +9,7 @@ const routes: any = Router()
 const dataKey = 'almedEvent'
 routes.get('/', async (req, res) => {
   const data = await getCollection(dataKey)
+  if (data) console.log('data length', data.length)
   res.json(data)
 })
 
@@ -69,5 +70,28 @@ routes.get('/update', async (req, res) => {
   await add(dataKey, allData)
   res.sendStatus(200)
 })
+
+routes.get('/update/:id', async (req, res) => {
+  const id = req.params.id
+  const mapPoints = await getMapPoints()
+  const mapMapPoints = mapPoints.result.reduce((acc, mapPoint: MapPoint) => {
+    acc[mapPoint.id] = mapPoint
+    return acc
+  }, {})
+  const item = await getItem(id, mapMapPoints)
+  if (!item) {
+    res.sendStatus(404)
+    return
+  }
+  await add(dataKey, [item])
+  res.sendStatus(200)
+})
+
+
+routes.get('/missing', async (req, res) => {
+  const data: Array<AlmedEvent> = await getCollection(dataKey)
+  res.json(data.filter(e => !e.date))
+})
+
 
 export default routes

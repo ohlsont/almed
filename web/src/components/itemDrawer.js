@@ -2,11 +2,11 @@ import React from 'react'
 import { Drawer, Card, CardHeader } from 'material-ui'
 import moment from 'moment'
 
-export const EventItem = (props: { item?: AlmedEvent } ) => props.item ? <div
+export const EventItem = (props: { item?: AlmedEvent, noTitle?: boolean } ) => props.item ? <div
     style={{ padding: '1em' }}
 >
     {/*<IconButton onClick={() => }><NavigationClose /></IconButton>*/}
-    <h3>{props.item.title}</h3>
+    {!props.noTitle && <h3>{props.item.title}</h3>}
     <p>{props.item.organiser}</p>
     <i>{moment(props.item.date).format('HH:mm dddd DD/MM')} - {moment(props.item.endDate).format('HH:mm')}</i>
     <p>{props.item.description}</p>

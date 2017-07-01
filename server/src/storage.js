@@ -4,8 +4,15 @@ import Redis from 'ioredis'
 
 import { makeChunks } from './utils'
 
-export async function add(dataKey: string, data: any): Promise<any> {
-  return addRedis(dataKey, data)
+export async function add(dataKey: string, data: Array<AlmedEvent>): Promise<any> {
+  const reduceF = (acc, ev) => {
+    acc[ev.id] = ev
+    return acc
+  }
+  const items = await getRedis(dataKey)
+  const itemMap = data
+    .reduce(reduceF, items.reduce(reduceF, {}))
+  return addRedis(dataKey, Object.keys(itemMap).map(key => itemMap[key]))
 }
 
 export async function del(key: string): Promise<void> {
@@ -15,6 +22,11 @@ export async function del(key: string): Promise<void> {
 export async function get(key: string): Promise<any> {
   return getRedis(key)
 }
+
+export async function getCollection(key: string): Promise<any> {
+  return getRedis(key)
+}
+
 
 // redis
 const redisClient = new Redis()
@@ -70,7 +82,7 @@ async function addGAE(dataKey: string, data: Array<any>): Promise<any> {
 }
 
 async function delGAE(key: string): Promise<void> {
-  const col = await getCollection(key)
+  const col = await getCollectionGoogle(key)
   const transaction = datastore.transaction()
 
   transaction.run(() => {
@@ -86,7 +98,7 @@ async function getGAE(key: string): Promise<any> {
   return await datastore.get(getKey(key))
 }
 
-export async function getCollection(key: string): Promise<any> {
+async function getCollectionGoogle(key: string): Promise<any> {
   const query = datastore.createQuery(key)
   const res = await datastore.runQuery(query)
   console.log('got from remote', res[0].length)

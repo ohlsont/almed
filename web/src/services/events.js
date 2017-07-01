@@ -2,7 +2,7 @@
 
 const eventsKey = 'items'
 const dbVersionKey = 'dbVersion'
-const currentVersion = '2'
+const currentVersion = '3'
 export default class Events {
     static migrateDB() {
         const version: ?string = localStorage.getItem(dbVersionKey)

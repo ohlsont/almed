@@ -79,7 +79,7 @@ export default class ParticipantModal extends React.Component {
             <div style={{ marginRight: '1em' }}>
                 <FlatButton label="Participants" onTouchTap={this.handleOpen} labelStyle={buttonStyle} />
                 <Dialog
-                    title={`All participants (showing ${limit})`}
+                    title={`All participants (showing ${parts.length})`}
                     actions={actions}
                     modal={false}
                     open={open}

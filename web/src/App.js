@@ -2,32 +2,29 @@
 import React, { Component } from 'react';
 import {
     FlatButton, AppBar, SelectField, MenuItem,
-    Slider, AutoComplete, Toggle, CircularProgress
+    Slider, AutoComplete, Toggle
 } from 'material-ui';
 import injectTapEventPlugin from 'react-tap-event-plugin'
-import ReactMapboxGl, { Cluster, Marker } from 'react-mapbox-gl'
 import moment from 'moment'
 
-import { EventsModal, ParticipantModal, CalendarModal, ItemDrawer, AlmedDrawer } from './components'
-import { Events } from './services'
+import { EventsModal, ParticipantModal, CalendarModal, AlmedDrawer, Map } from './components'
+import { Events, Favorites } from './services'
+import EventsTable from "./components/eventsTable";
 
 // Needed for onTouchTap
 // http://stackoverflow.com/a/34015469/988941
 injectTapEventPlugin()
 
-type Coord = {
-    lat: number,
-    lng: number,
-}
-
 type Appstate = {
     points: Array<AlmedEvent>,
+    filteredPoints: Array<AlmedEvent>,
     participantsMap: {[key: string]: [AlmedParticipant, number]},
     choosenPoint?: ?AlmedEvent,
 
     choosenParticipant?: AlmedParticipant,
     subjectsObject?: {[key: string]: number},
     choosenSubjectIndex?: ?number,
+    choosenDay?: ?string,
 
     unixSecondsMax?: number,
     unixSecondsMin?: number,
@@ -35,37 +32,28 @@ type Appstate = {
     choosenUnixSecondsMin?: number,
 
     food?: boolean,
-
-    bounds: {
-        nw: Coord,
-        se: Coord,
-        sw: Coord,
-        ne: Coord,
-    }
 }
 
 class App extends Component {
-    state: Appstate  = {
+    state: Appstate = {
+        choosenDay: null,
         points: [],
+        filteredPoints: [],
         participantsMap: {},
-        bounds: {
-            nw: { lat: 0, lng: 0 },
-            se: { lat: 0, lng: 0 },
-            sw: { lat: 0, lng: 0 },
-            ne: { lat: 0, lng: 0 },
-        },
     }
 
     componentWillMount() {
-        const points = Events.getPersistentEvents()
+        this.setState({ points: Events.getPersistentEvents() }, () => this.setup())
+    }
+
+    setup() {
+        const { points } = this.state
+        const filteredPoints = this.filterPoints()
         const subjectsObject = {}
         const times = []
         const participantsMap: {[key: string]: [AlmedParticipant, number]} = {}
-        const bounds = points.reduce((boundsAcc, point: AlmedEvent) => {
-            const la = parseFloat(point.latitude)
-            const lo = parseFloat(point.longitude)
+        filteredPoints.forEach((point) => {
             if (point.subject && point.subject.length) {
-                console.log('debug', point.subject)
                 point.subject.forEach(sub => {
                     subjectsObject[sub] = subjectsObject[sub] ? subjectsObject[sub] + 1 : 1
                 })
@@ -85,28 +73,18 @@ class App extends Component {
                 const d = Math.round(new Date(point.date).getTime()/1000)
                 if (!isNaN(d)) times.push(d)
             }
+        })
 
-            const f = (prop: string,
-                       f1: (n1: number, n2: number)=>number,
-                       f2: (n1: number, n2: number)=>number) => (boundsAcc[prop] = {
-                lat: boundsAcc[prop] && boundsAcc[prop].lat ? f1(boundsAcc[prop].lat, la) : la,
-                lng: boundsAcc[prop] && boundsAcc[prop].lng ? f2(boundsAcc[prop].lng, lo) : lo,
-            })
-            f('nw', Math.max, Math.min)
-            f('sw', Math.min, Math.min)
-            f('ne', Math.max, Math.max)
-            f('se', Math.min, Math.max)
-            return boundsAcc
-        }, this.state.bounds)
         console.log('participantsMap', participantsMap)
         const d = {
             unixSecondsMin: Math.min(...times),
             unixSecondsMax: Math.max(...times),
         }
+
         this.setState({
             points,
+            filteredPoints,
             participantsMap,
-            bounds,
             subjectsObject,
             ...d,
             choosenUnixSecondsMin: d.unixSecondsMin,
@@ -121,7 +99,7 @@ class App extends Component {
     }
 
     filterPoints() {
-        const { points, choosenSubjectIndex, subjectsObject,
+        const { points, choosenSubjectIndex, subjectsObject, choosenDay,
             choosenUnixSecondsMin, choosenUnixSecondsMax, food } = this.state
         const subjects = Object.keys(subjectsObject || {}).sort()
         const choosenSubject = choosenSubjectIndex != null && subjects ? subjects[choosenSubjectIndex] : null
@@ -136,96 +114,16 @@ class App extends Component {
             if (food) {
                 keep = keep && point.food
             }
+
+            if (choosenDay) {
+                keep = keep && moment(point.date).isSame(choosenDay, 'day')
+            }
+
             return keep
         })
         // console.log('choosenSubjectIndex', choosenSubjectIndex, res, choosenSubject)
+
         return res
-    }
-
-
-    renderMap(points: Array<AlmedEvent>) {
-        const { bounds, choosenPoint } = this.state
-        const Map = ReactMapboxGl({
-            accessToken: "pk.eyJ1IjoiaGluayIsImEiOiJ0emd1UlZNIn0.NpY-l_Elzhz9aOLoql6zZQ"
-        });
-
-        const markerSize = 40
-        const styles = {
-            clusterMarker: {
-                width: markerSize,
-                height: markerSize,
-                borderRadius: '50%',
-                backgroundColor: '#51D5A0',
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'center',
-                color: 'white',
-                border: '2px solid #56C498',
-            },
-            marker: {
-                width: markerSize,
-                height: markerSize,
-                borderRadius: '50%',
-                backgroundColor: '#E0E0E0',
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'center',
-                border: '2px solid #C9C9C9',
-                cursor: 'pointer',
-            }
-        }
-        const clusterMarker = (coordinates: Array<number>, pointCount: number) => <Marker
-            key={`${pointCount}-${coordinates[0]}-${coordinates[1]}`}
-            coordinates={coordinates}
-            style={styles.clusterMarker}
-            onClick={(event, item, c) => {
-                console.log('cluster', event, item, c)
-            }}
-        >
-            <div>{pointCount}</div>
-        </Marker>
-
-        const markers = points
-            .filter((e: AlmedEvent) => e.longitude && e.latitude)
-            .map((point: AlmedEvent) => <Marker
-                key={`id-${point.id}`}
-                coordinates={[point.longitude, point.latitude]}
-                style={styles.marker}
-                onClick={(event, item, c) => {
-                    console.log('marker click', point)
-                    this.setState({
-                        choosenPoint: point,
-                    })
-                }}
-            >
-                {point.subject && point.subject.length ? point.subject[0].charAt(0) : 'Ö'}
-        </Marker>)
-        return <div>
-            <ItemDrawer item={choosenPoint}/>
-            <Map
-                style={'mapbox://styles/mapbox/streets-v9'} // eslint-disable-line
-                fitbounds={[[bounds.sw.lng, bounds.sw.lat],[bounds.ne.lng, bounds.ne.lat]]}
-                center={[18.290711, 57.640484]}
-                onClick={() => this.setState({ choosenPoint: null })}
-                containerStyle={{
-                    height: "93vh",
-                    width: "100vw"
-                }}
-            >
-                <Cluster ClusterMarkerFactory={clusterMarker}>
-                    {markers}
-                </Cluster>
-                {/*{choosenPoint && <Popup*/}
-                    {/*coordinates={[choosenPoint.longitude, choosenPoint.latitude]}*/}
-                    {/*offset={{*/}
-                        {/*'bottom-left': [12, -38],  'bottom': [0, -38], 'bottom-right': [-12, -38]*/}
-                    {/*}}>*/}
-                    {/*<h4>{choosenPoint.title}</h4>*/}
-                    {/*<p>{choosenPoint.subject}</p>*/}
-                    {/*<p>{choosenPoint.type}</p>*/}
-                {/*</Popup>}*/}
-            </Map>
-        </div>
     }
 
     renderSubjectSelect() {
@@ -302,7 +200,7 @@ class App extends Component {
     }
 
     renderDaySelector() {
-        const { points } = this.state
+        const { points, choosenDay } = this.state
         const format = 'YYYY-MM-DDTHH:mm:ss'
         const days = (points || [])
             .reduce((acc, point) => {
@@ -314,8 +212,10 @@ class App extends Component {
         const dayKeys = Object.keys(days)
         return !!dayKeys.length && <SelectField
             floatingLabelText="Day"
-            value={dayKeys[0]}
-            onChange={(e, value) => console.log('debug', value)}
+            value={choosenDay}
+            onChange={(e, index, value) => {
+                this.setState({ choosenDay: value }, () => this.setup())
+            }}
             floatingLabelStyle={{color:'white'}}
             labelStyle={{
                 color:'white',
@@ -323,14 +223,15 @@ class App extends Component {
                 WebkitTapHighlightColor: 'white',
             }}
         >
+            <MenuItem key={'alla'} value={null} primaryText={'All days'} />
             {dayKeys.map((key) => <MenuItem key={key} value={key} primaryText={moment(key).format('dddd DD/MM')} />)}
         </SelectField>
     }
 
-    render() {
-        const { participantsMap } = this.state
+    renderAppBar(filteredPoints: Array<AlmedEvent>) {
+        const { participantsMap, points } = this.state
         const buttonStyle = { color: 'white' }
-        const filteredPoints = this.filterPoints()
+
         const content = <div>
             <Toggle
                 style={{ width: '3em' }}
@@ -346,32 +247,45 @@ class App extends Component {
                 Visar: {filteredPoints.length}
             </p>
         </div>
+        return <AppBar
+            title={'Almedalen'}
+            iconElementLeft={<AlmedDrawer content={content} />}
+            iconElementRight={
+                <div
+                    style={{ display: 'flex' }}
+                >
+                    <div style={{ color: 'white' }}>{filteredPoints.length}</div>
+                    {this.renderDaySelector()}
+                    <ParticipantModal participantsMap={participantsMap} buttonStyle={buttonStyle}/>
+                    <EventsModal events={filteredPoints} buttonStyle={buttonStyle} />
+                    <CalendarModal events={filteredPoints} buttonStyle={buttonStyle} />
+                    <FlatButton
+                        label={'Download'}
+                        onClick={() => this.downloadSaveData()}
+                        labelStyle={buttonStyle}
+                    />
+                </div>
+            }
+        />
+    }
 
-        return (
-            <div className="App">
-                <AppBar
-                    title={'Almedalen'}
-                    iconElementLeft={<AlmedDrawer content={content} />}
-                    iconElementRight={
-                        <div
-                            style={{ display: 'flex' }}
-                        >
-                            {this.renderDaySelector()}
-                            <ParticipantModal participantsMap={participantsMap} buttonStyle={buttonStyle}/>
-                            <EventsModal events={filteredPoints} buttonStyle={buttonStyle} />
-                            <CalendarModal events={filteredPoints} buttonStyle={buttonStyle} />
-                            <FlatButton
-                                label={'Download'}
-                                onClick={() => this.downloadSaveData()}
-                                labelStyle={buttonStyle}
-                                icon={<CircularProgress />}
-                            />
-                        </div>
-                    }
-                />
-                {this.renderMap(filteredPoints)}
+    render() {
+        const { points, filteredPoints } = this.state
+        return <div className="App">
+            {this.renderAppBar(filteredPoints)}
+            <div style={{ display: 'flex' }}>
+                <div style={{ width: '75%' }}>
+                    <EventsTable
+                        events={points}
+                        onlyFavs={true}
+                        defaultSort="time"
+                    />
+                </div>
+                <div style={{ width: '25%' }}>
+                    <Map points={Favorites.all()} />
+                </div>
             </div>
-        );
+        </div>
     }
 }
 

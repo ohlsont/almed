@@ -17,6 +17,7 @@ type HTMLTreeChild = {
   type?: string,
   tagName?: string,
   content?: string,
+  className?: Array<string>,
   attributes?: {
     id: string,
     titel: string,
@@ -97,6 +98,7 @@ export const traverseTree = (
 
 export async function getIds(): Promise<Array<string>> {
   const url = 'https://almedalsguiden.com/main/search'
+  console.log('requesting', url)
   const resp = await fetch(url, {
     method: 'post',
     headers: {
@@ -117,6 +119,7 @@ export async function getIds(): Promise<Array<string>> {
     'status=&' +
     'accessibility=',
   })
+  console.log('got response', url)
 
   switch (resp.status) {
     case 204:
@@ -140,36 +143,47 @@ export async function getParsedItem(id: string): Promise<Array<any>> {
   return himalaya.parse(res)
 }
 
-const removeFirstSpace = (str: string): string => str && !str.charAt(0).match(/[a-z]/i) ? str.slice(1) : str
+const alphabetRegexp = /[a-z\wåäöÅÄÖ]/i
+const removeFirstSpace = (str: string): string => str && !str.charAt(0).match(alphabetRegexp) ? str.slice(1) : str
 export async function getItem(href: string, mapMapPoints: {[key: string]: MapPoint}): Promise<?AlmedEvent> {
   const id = href.split('/').pop()
   const mapPoint = mapMapPoints[id] || {}
   try {
     const json = await getParsedItem(id)
-    const article: ?HTMLTreeChild = traverseTree({ children: json }, (tree2) => !!tree2.attributes && tree2.attributes.id === 'event')
-    if (!article) {
-      console.warn('no child found')
-      return
+    let article: ?HTMLTreeChild = traverseTree({ children: json }, (tree2) => !!tree2.attributes && tree2.attributes.id === 'event')
+    if (!article || !article.children || !article.children.length) {
+      // try 2
+      article = traverseTree({ children: json }, (tree2) => !!tree2.attributes && !!tree2.attributes.className && tree2.attributes.className.some(s => s === 'main-content'))
+      if (!article || !article.children || !article.children.length) {
+        console.warn('no child found')
+        return
+      }
     }
     // console.log('article', article, (article.attributes || {}))
     const itemContent = article
-
-    const filterFunc = (filterFor: string): ?string => {
+    const filterFuncChildren = (filterFor: string): ?HTMLTreeChild => {
       const item = traverseTree(article, (tree: HTMLTreeChild) => {
         const child = applyChildren(tree, [0, 0])
         return !!child && child === filterFor
       })
-      if (!item || !item.children || !item.children[1]) {
+      if (!item || !item.children) {
+        return null
+      }
+      return item
+    }
+    const filterFunc = (filterFor: string): ?string => {
+      const item = filterFuncChildren(filterFor)
+      if (!item || !item.children[1]) {
         return null
       }
       const r = (item.children[1] || {}).content
       return r ? removeFirstSpace(r) : null
     }
 
-    const p: ?Array<any> = applyChildren(itemContent, [9], false).children
+    const p: ?Array<any> = (filterFuncChildren('Medverkande:') || {}).children
     let participants = []
     if (p) {
-      const a2 = p.filter(item => item.content && item.content.match(/[a-z]/i))
+      const a2 = p.filter(item => item.content && item.content.match(alphabetRegexp))
       participants = a2.filter(e => e && e.content).map(no => {
         const pList: Array<string> = no.content.split(',').map(removeFirstSpace)
         return {
@@ -201,7 +215,6 @@ export async function getItem(href: string, mapMapPoints: {[key: string]: MapPoi
     const food = filterFunc('Förtäring:')
     const green = filterFunc('Grönt evenemang:')
 
-
     const organiser: string = filterFunc('Arrangör:') || ''
     const eventResult: AlmedEvent = {
       id,
@@ -222,10 +235,8 @@ export async function getItem(href: string, mapMapPoints: {[key: string]: MapPoi
       availabilty: filterFunc('Tillgänglighet:') || '',
       live: !!(live && live.includes('Ja')),
       food: !!(food && food.includes('Ja')),
-      web: applyChildren(itemContent, [13], false).children
-        .reduce((acc, child: HTMLTreeChild) => acc.concat(child.children), [])
-        .filter(Boolean)
-        .map(child => (child.attributes || {}).href),
+      web: [((traverseTree(itemContent, (child) => ((child || {}).attributes || {}).href) || {}).attributes || {}).href]
+        .filter(Boolean),
       url: `https://almedalsguiden.com/event/${id}`,
       // contact: applyChildren(itemContent, [15,1,1,0,0]),
       // contactOrg: applyChildren(itemContent, [15,1,1]),
