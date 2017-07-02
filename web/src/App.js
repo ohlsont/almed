@@ -1,15 +1,16 @@
 // @flow
 import React, { Component } from 'react';
 import {
-    FlatButton, AppBar, SelectField, MenuItem,
-    Slider, AutoComplete, Toggle
+    FlatButton, AppBar, SelectField, MenuItem, Toggle,
+    Slider, AutoComplete, TimePicker, IconButton,
 } from 'material-ui';
 import injectTapEventPlugin from 'react-tap-event-plugin'
 import moment from 'moment'
+import Refresh from 'material-ui/svg-icons/navigation/refresh'
 
-import { EventsModal, ParticipantModal, CalendarModal, AlmedDrawer, Map } from './components'
+import { EventsModal, ParticipantModal, CalendarModal, AlmedDrawer, Map, GDriveSave } from './components'
 import { Events, Favorites } from './services'
-import EventsTable from "./components/eventsTable";
+import EventsTable from "./components/eventsTable"
 
 // Needed for onTouchTap
 // http://stackoverflow.com/a/34015469/988941
@@ -21,10 +22,13 @@ type Appstate = {
     participantsMap: {[key: string]: [AlmedParticipant, number]},
     choosenPoint?: ?AlmedEvent,
 
+    nonColliding?: boolean,
+    inFuture: boolean,
     choosenParticipant?: AlmedParticipant,
     subjectsObject?: {[key: string]: number},
     choosenSubjectIndex?: ?number,
     choosenDay?: ?string,
+    choosenDayEnd?: ?string,
 
     unixSecondsMax?: number,
     unixSecondsMin?: number,
@@ -34,12 +38,20 @@ type Appstate = {
     food?: boolean,
 }
 
+function saveToDisk(text: string, name: string = 'favorites.txt', type: string = 'text/plain') {
+    var a = document.createElement("a");
+    var file = new Blob([text], {type: type});
+    a.href = URL.createObjectURL(file);
+    a.download = name;
+    a.click();
+}
+
 class App extends Component {
     state: Appstate = {
-        choosenDay: null,
         points: [],
         filteredPoints: [],
         participantsMap: {},
+        inFuture: true,
     }
 
     componentWillMount() {
@@ -99,11 +111,13 @@ class App extends Component {
     }
 
     filterPoints() {
-        const { points, choosenSubjectIndex, subjectsObject, choosenDay,
+        const { points, choosenSubjectIndex, subjectsObject, choosenDay, choosenDayEnd, nonColliding, inFuture,
             choosenUnixSecondsMin, choosenUnixSecondsMax, food } = this.state
         const subjects = Object.keys(subjectsObject || {}).sort()
         const choosenSubject = choosenSubjectIndex != null && subjects ? subjects[choosenSubjectIndex] : null
-        const res = points.filter(point => {
+
+        const favs = Favorites.all()
+        const res = points.filter((point: AlmedEvent) => {
             let keep = choosenSubject ? point.subject === choosenSubject : true
             if (point.date) {
                 const time = new Date(point.date).getTime()/1000
@@ -115,8 +129,31 @@ class App extends Component {
                 keep = keep && point.food
             }
 
+            if (nonColliding) {
+                keep = keep && !favs.some((fav: AlmedEvent) => {
+                    if (!fav.date || !fav.endDate || !point.date || !point.endDate) {
+                        console.log('missing date')
+                        return false
+                    }
+                    const start1 = (new Date(fav.date)).getTime()
+                    const end1 = (new Date(fav.endDate)).getTime()
+                    const start2 = (new Date(point.date)).getTime()
+                    const end2 = (new Date(point.endDate)).getTime()
+                    return Math.max(start1, start2) < Math.min(end1, end2)
+                })
+            }
+
+            if (inFuture) {
+                keep = keep && moment(point.date).isAfter(moment())
+            }
+
+            const d = moment(point.date)
             if (choosenDay) {
-                keep = keep && moment(point.date).isSame(choosenDay, 'day')
+                keep = keep && d.isAfter(choosenDay)
+            }
+
+            if (choosenDayEnd) {
+                keep = keep && d.isBefore(choosenDayEnd)
             }
 
             return keep
@@ -200,7 +237,7 @@ class App extends Component {
     }
 
     renderDaySelector() {
-        const { points, choosenDay } = this.state
+        const { points, choosenDay, choosenDayEnd } = this.state
         const format = 'YYYY-MM-DDTHH:mm:ss'
         const days = (points || [])
             .reduce((acc, point) => {
@@ -210,62 +247,86 @@ class App extends Component {
                 return acc
             }, {})
         const dayKeys = Object.keys(days)
-        return !!dayKeys.length && <SelectField
-            floatingLabelText="Day"
-            value={choosenDay}
-            onChange={(e, index, value) => {
-                this.setState({ choosenDay: value }, () => this.setup())
-            }}
-            floatingLabelStyle={{color:'white'}}
-            labelStyle={{
-                color:'white',
-                WebkitTextFillColor: 'white',
-                WebkitTapHighlightColor: 'white',
-            }}
-        >
-            <MenuItem key={'alla'} value={null} primaryText={'All days'} />
-            {dayKeys.map((key) => <MenuItem key={key} value={key} primaryText={moment(key).format('dddd DD/MM')} />)}
-        </SelectField>
+        // const labelColor = {
+        //     // color:'white',
+        //     // WebkitTextFillColor: 'white',
+        //     // WebkitTapHighlightColor: 'white',
+        // }
+        return <div style={{ display: 'flex' }}>
+            {!!dayKeys.length && <SelectField
+                key={'date'}
+                floatingLabelText="Day"
+                value={choosenDay}
+                onChange={(e, index, value) => {
+                    let state = {
+                        choosenDay: null,
+                        choosenDayEnd: null,
+                    }
+                    if (value) {
+                        state.choosenDay = value
+                        state.choosenDayEnd = moment(value).endOf('day').format()
+                    }
+                    console.log('did set date', state)
+                    this.setState(state, () => this.setup())
+
+                }}
+            >
+                <MenuItem key={'alla'} value={null} primaryText={'All days'} />
+                {dayKeys.map((key) => <MenuItem key={key} value={key} primaryText={moment(key).format('dddd DD/MM')} />)}
+            </SelectField>}
+            <div>
+            {!!choosenDay &&
+                <TimePicker
+                    key={'startDate'}
+                    format="24hr"
+                    value={new Date(choosenDay)}
+                    onChange={(e, value) => this.setState({ choosenDay: moment(value).format() }, () => this.setup())}
+                />}
+            {!!choosenDayEnd && <TimePicker
+                key={'endDate'}
+                format="24hr"
+                value={new Date(choosenDayEnd)}
+                onChange={(e, value) => this.setState({ choosenDayEnd: moment(value).format() }, () => this.setup())}
+            />}
+            </div>
+        </div>
     }
 
     renderAppBar(filteredPoints: Array<AlmedEvent>) {
-        const { participantsMap, points } = this.state
-        const buttonStyle = { color: 'white' }
+        const { participantsMap } = this.state
 
         const content = <div>
+            <div>Seminars {filteredPoints.length}</div>
+            {this.renderDaySelector()}
             <Toggle
-                style={{ width: '3em' }}
-                label="Mat"
-                onToggle={(e, res: boolean) => this.setState({
-                    food: res,
-                })}
+                style={{ width: 20 }}
+                label="Non colliding"
+                onToggle={(e, value) => this.setState({ nonColliding: value }, () => this.setup())}
             />
-            {this.renderSubjectSelect()}
-            {this.renderTimeSelectors()}
-            {this.renderParticipants()}
-            <p>
-                Visar: {filteredPoints.length}
-            </p>
+            <Toggle
+                style={{ width: 20 }}
+                defaultToggled={true}
+                label="In the future"
+                onToggle={(e, value) => this.setState({ inFuture: value }, () => this.setup())}
+            />
+            <GDriveSave />
+            <ParticipantModal participantsMap={participantsMap}/>
+            <EventsModal events={filteredPoints}/>
+            <CalendarModal events={filteredPoints}/>
+            <FlatButton
+                label={'Download'}
+                onClick={() => this.downloadSaveData()}
+            />
+            <FlatButton
+                label={'SaveToDisk'}
+                onClick={() => saveToDisk(JSON.stringify(Favorites.all()))}
+            />
+
         </div>
         return <AppBar
             title={'Almedalen'}
             iconElementLeft={<AlmedDrawer content={content} />}
-            iconElementRight={
-                <div
-                    style={{ display: 'flex' }}
-                >
-                    <div style={{ color: 'white' }}>{filteredPoints.length}</div>
-                    {this.renderDaySelector()}
-                    <ParticipantModal participantsMap={participantsMap} buttonStyle={buttonStyle}/>
-                    <EventsModal events={filteredPoints} buttonStyle={buttonStyle} />
-                    <CalendarModal events={filteredPoints} buttonStyle={buttonStyle} />
-                    <FlatButton
-                        label={'Download'}
-                        onClick={() => this.downloadSaveData()}
-                        labelStyle={buttonStyle}
-                    />
-                </div>
-            }
+            iconElementRight={<IconButton tooltip="Reload favorites"><Refresh /></IconButton>}
         />
     }
 

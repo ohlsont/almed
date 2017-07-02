@@ -14,7 +14,7 @@ const whitelist = [
   'https://ohlsont.github.com/almed',
   // 'http://localhost:8080',
   // 'http://localhost:3000',
-  // 'http://evil.com/',
+  'http://evil.com/',
 ]
 const corsOptions = {
   origin: function (origin, callback) {

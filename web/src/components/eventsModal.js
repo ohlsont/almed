@@ -13,12 +13,14 @@ const customContentStyle = {
 
 export default class EventsModal extends React.Component {
     state = {
+        currentLimit: 100,
         open: false,
         titleFilterText: '',
         participantFilterText: '',
         foodFilter: false,
         onlyFavs: false,
         orgFilterText: '',
+        descFilterText: '',
     }
 
     handleOpen = () => {
@@ -44,7 +46,7 @@ export default class EventsModal extends React.Component {
 
     render() {
         const { events, buttonStyle, withOutButton } = this.props
-        const { open, titleFilterText,
+        const { open, titleFilterText, descFilterText, currentLimit,
             orgFilterText, foodFilter, onlyFavs } = this.state
         const actions = [
             <FlatButton
@@ -67,6 +69,7 @@ export default class EventsModal extends React.Component {
         }
         filter('title', titleFilterText)
         filter('organiser', orgFilterText)
+        filter('description', descFilterText)
 
         if (foodFilter) {
             sortedEvents = sortedEvents.filter(event => event.food)
@@ -76,7 +79,7 @@ export default class EventsModal extends React.Component {
             <div style={{ marginRight: '1em' }}>
                 {!withOutButton && <FlatButton label="Seminars" onTouchTap={this.handleOpen} labelStyle={buttonStyle} />}
                 <Dialog
-                    title={`All seminars (showing ${sortedEvents.length})`}
+                    title={`Seminars, showing ${currentLimit < sortedEvents.length ? `${currentLimit} of ${sortedEvents.length}` : sortedEvents.length }`}
                     actions={actions}
                     modal={false}
                     open={withOutButton ? !!events.length : open}
@@ -95,6 +98,10 @@ export default class EventsModal extends React.Component {
                             hintText="Filter org"
                             onChange={(e, text) => this.setState({ orgFilterText: text })}
                         />
+                        <TextField
+                            hintText="Filter description"
+                            onChange={(e, text) => this.setState({ descFilterText: text })}
+                        />
                         <Toggle
                             style={{ width: 20 }}
                             label="Food"
@@ -105,9 +112,8 @@ export default class EventsModal extends React.Component {
                             label="Only favs"
                             onToggle={(e, value) => this.setState({ onlyFavs: value })}
                         />
-                        <div>{sortedEvents.length}</div>
                     </div>
-                    <EventsTable events={sortedEvents} onlyFavs={onlyFavs} />
+                    <EventsTable events={sortedEvents} onlyFavs={onlyFavs} onLimitChange={(newLimit) => this.setState({ currentLimit: newLimit })} />
                 </Dialog>
             </div>
         );

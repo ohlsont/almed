@@ -120,7 +120,7 @@ class Map extends React.Component {
                 onClick={() => this.setState({ choosenPoint: null })}
                 containerStyle={{
                     height: "93vh",
-                    width: "100vw"
+                    width: "25vw"
                 }}
             >
                 <Cluster ClusterMarkerFactory={clusterMarker}>

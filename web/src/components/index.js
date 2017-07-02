@@ -8,6 +8,7 @@ import ItemDrawer, { EventItem } from './itemDrawer'
 import EventsTable from './eventsTable'
 import Map from './map'
 import EventModal from './eventModal'
+import GDriveSave from './gDriveStorage'
 
 export {
     ParticipantModal,
@@ -19,4 +20,5 @@ export {
     EventsTable,
     Map,
     EventModal,
+    GDriveSave,
 }

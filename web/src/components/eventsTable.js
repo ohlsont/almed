@@ -1,7 +1,7 @@
 // @flow
 import React from 'react'
 import {
-    IconButton,
+    IconButton, FlatButton,
     Table, TableRow, TableHeader, TableHeaderColumn, TableRowColumn, TableBody,
 } from 'material-ui'
 import Star from 'material-ui/svg-icons/toggle/star'
@@ -19,9 +19,11 @@ export default class EventsTable extends React.Component {
         sort: SortTypes,
         asc: boolean,
         favs: Array<AlmedEvent>,
+        limit: number,
     } = {
         sort: 'time',
         asc: true,
+        limit: 100,
         favs: Favorites.all(),
     }
 
@@ -46,11 +48,12 @@ export default class EventsTable extends React.Component {
         events: Array<AlmedEvent>,
         onlyFavs: boolean,
         defaultSort?: SortTypes,
+        onLimitChange?: (newLimit: number)=>void,
     }
 
     render() {
-        const { events, onlyFavs } = this.props
-        const { sort, asc, choosenEvent, favs } = this.state
+        const { events, onlyFavs, onLimitChange } = this.props
+        const { sort, asc, choosenEvent, favs, limit } = this.state
 
         let sortedEvents = events
         // .slice(0, 30)
@@ -85,7 +88,6 @@ export default class EventsTable extends React.Component {
         }, {})
 
         const smallRowWidth = 20
-        const limit = 100
         const timeFormat = 'HH:mm dddd DD/MM'
 
         return <div>
@@ -126,6 +128,7 @@ export default class EventsTable extends React.Component {
                         <TableHeaderColumn>Time</TableHeaderColumn>
                         <TableHeaderColumn>Organiser</TableHeaderColumn>
                         <TableHeaderColumn>Participants</TableHeaderColumn>
+                        <TableHeaderColumn>Subjects</TableHeaderColumn>
                         <TableHeaderColumn
                             style={{ width: 20 }}
                         >Food</TableHeaderColumn>
@@ -156,10 +159,13 @@ export default class EventsTable extends React.Component {
                                     <Star />
                                 </IconButton>
                             </TableRowColumn>
-                            <TableRowColumn>{event.title}</TableRowColumn>
+                            <TableRowColumn>
+                                {event.title}
+                            </TableRowColumn>
                             <TableRowColumn>{moment(event.date).format(timeFormat)}</TableRowColumn>
                             <TableRowColumn>{event.organiser}</TableRowColumn>
                             <TableRowColumn>{(event.participants || []).reduce((acc, part) => acc + `${part.name}, ${part.title}, ${part.company} \n`, '')}</TableRowColumn>
+                            <TableRowColumn>{(event.subject || []).reduce((acc, part) => acc + `, ${part}`)}</TableRowColumn>
                             <TableRowColumn
                                 style={{ width: smallRowWidth }}
                             >
@@ -169,6 +175,14 @@ export default class EventsTable extends React.Component {
                     })}
                 </TableBody>
             </Table>
+            {sortedEvents.length > limit && <FlatButton
+                label="Load 100 more.."
+                onClick={() => {
+                    const newLimit = limit + 100
+                    if (onLimitChange) onLimitChange(newLimit)
+                    this.setState({ limit: newLimit })
+                }}
+            />}
         </div>
     }
 }

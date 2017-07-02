@@ -17,6 +17,7 @@ export default class ParticipantModal extends React.Component {
         companyFilterText: '',
         nameFilterText: '',
         choosenEvents: [],
+        limit: 100,
     }
 
     handleOpen = () => {
@@ -34,7 +35,9 @@ export default class ParticipantModal extends React.Component {
 
     render() {
         const { participantsMap, buttonStyle } = this.props
-        const { sort, asc, open, titleFilterText, companyFilterText, nameFilterText, choosenEvents } = this.state
+        const {
+            sort, asc, open, titleFilterText, companyFilterText, nameFilterText, choosenEvents, limit,
+        } = this.state
         const actions = [
             <FlatButton
                 label="Cancel"
@@ -74,12 +77,11 @@ export default class ParticipantModal extends React.Component {
         filter('company', companyFilterText)
         filter('name', nameFilterText)
 
-        const limit =  100
         return (
             <div style={{ marginRight: '1em' }}>
                 <FlatButton label="Participants" onTouchTap={this.handleOpen} labelStyle={buttonStyle} />
                 <Dialog
-                    title={`All participants (showing ${parts.length})`}
+                    title={`Participants, showing ${limit < parts.length ? `${limit} of ${parts.length}` : parts.length }`}
                     actions={actions}
                     modal={false}
                     open={open}
@@ -158,6 +160,13 @@ export default class ParticipantModal extends React.Component {
                             })}
                         </TableBody>
                     </Table>
+                    {parts.length > limit && <FlatButton
+                        label="Load 100 more.."
+                        onClick={() => {
+                            const newLimit = limit + 100
+                            this.setState({ limit: newLimit })
+                        }}
+                    />}
                     <EventsModal
                         events={choosenEvents || []}
                         withOutButton={true}
