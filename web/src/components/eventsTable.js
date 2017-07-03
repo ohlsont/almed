@@ -67,6 +67,9 @@ export default class EventsTable extends React.Component {
                         }
                         const a = new Date(e1.date).getTime()
                         const b = new Date(e2.date || '').getTime()
+                        if (a == b) {
+                            return sortF(e1.id < e2.id)
+                        }
                         return sortF(a < b)
                     case 'org':
                         return sortF(e1.organiser < e2.organiser)
@@ -140,6 +143,7 @@ export default class EventsTable extends React.Component {
                     {sortedEvents.slice(0, limit).map((event: AlmedEvent) => {
                         return <TableRow
                             key={`${event.id}`}
+                            style={{ background: (moment().isAfter(moment(event.date))) ? 'lightgrey' : 'white' }}
                             onMouseUp={() => {
                                 this.setState({
                                     choosenEvent: event,

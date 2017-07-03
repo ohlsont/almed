@@ -144,7 +144,7 @@ class App extends Component {
             }
 
             if (inFuture) {
-                keep = keep && moment(point.date).isAfter(moment())
+                keep = keep && moment(point.endDate).isAfter(moment())
             }
 
             const d = moment(point.date)
