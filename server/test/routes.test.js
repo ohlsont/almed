@@ -1,5 +1,5 @@
 // @flow
-import { getParsedItem, getItem, traverseTree } from '../src/almed'
+import { getParsedItem, getItem, traverseTree, partiesFromParticipants } from '../src/almed'
 
 // describe('GET /', () => {
 //   it('should render properly', async () => {
@@ -26,6 +26,20 @@ import { getParsedItem, getItem, traverseTree } from '../src/almed'
 //     await request(app).get('/notfound').expect(404)
 //   })
 // })
+
+describe('filter parties', () => {
+  it('should return', () => {
+    const participant: AlmedParticipant = {
+      name: 'kalle b',
+      title: 'minister (m)',
+      company: 'moderaterna (m)',
+    }
+    const res = partiesFromParticipants([participant])
+    console.log('debug', res)
+    expect(res !== null)
+    expect(res === 'm')
+  })
+})
 
 const testItemId = '6862'
 describe('get item', () => {

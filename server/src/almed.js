@@ -5,7 +5,7 @@ import moment from 'moment'
 
 import { makeChunks } from './utils'
 
-type MapPoint = {
+export type MapPoint = {
   id: string,
   PLACE: string,
   PLACE_DESCRIPTION: string,
@@ -21,11 +21,12 @@ type HTMLTreeChild = {
   attributes?: {
     id: string,
     titel: string,
+    href: string,
   },
   children: Array<HTMLTreeChild>,
 }
 
-export async function getEvents(): Promise<Array<?AlmedEvent>> {
+export async function getEvents(): Promise<Array<AlmedEvent>> {
   const ids: Array<string> = await getIds()
   const mapPoints = await getMapPoints()
   const mapMapPoints = mapPoints.result.reduce((acc, mapPoint: MapPoint) => {
@@ -44,7 +45,7 @@ export async function getEvents(): Promise<Array<?AlmedEvent>> {
     await sleep(3000)
     res.push(...eventsChunk.filter(Boolean))
   }
-  return res
+  return res.filter(Boolean)
 }
 
 function sleep(ms) {
@@ -84,12 +85,12 @@ const applyChildren = (json: Object, arr: Array<number>, withContent: boolean = 
 export const traverseTree = (
   tree: HTMLTreeChild,
   func: (tree2: HTMLTreeChild)=>boolean
-) => {
+): ?HTMLTreeChild => {
   if (func(tree)) {
     return tree
   }
   let res
-  (tree.children || []).some(child => {
+  const producedResult = (tree.children || []).some(child => {
     res = traverseTree(child, func)
     return !!res
   })
@@ -143,6 +144,28 @@ export async function getParsedItem(id: string): Promise<Array<any>> {
   return himalaya.parse(res)
 }
 
+export const partiesFromParticipants = (parts: AlmedParticipant[]): Array<string> => {
+  const partsParties: Array<string> = parts.map((part) => {
+    const f = (substrings: Array<string>, ret): ?string => [part.company, part.title]
+      .some((str) => substrings
+        .some((substr) => str
+          .search(substr) > -1)) ? ret : null
+    const partiesStr = [
+      f(['\\(s\\)', 'socialdemokraterna'], 's'),
+      f(['\\(m\\)', 'moderaterna'], 'm'),
+      f(['\\(l\\)', 'liberalerna'], 'l'),
+      f(['\\(c\\)', 'centerpartiet'], 'c'),
+      f(['\\(v\\)', 'vänsterpartiet'], 'v'),
+      f(['\\(sd\\)', 'sverigedemokraterna'], 'sd'),
+      f(['\\(mp\\)', 'miljöpartiet'], 'mp'),
+    ].filter(Boolean)
+    return partiesStr
+  }).reduce((acc, strs: Array<string>) => {
+    return acc.concat(strs)
+  }, [])
+  return [...new Set(partsParties)]
+}
+
 const alphabetRegexp = /[a-z\wåäöÅÄÖ]/i
 const removeFirstSpace = (str: string): string => str && !str.charAt(0).match(alphabetRegexp) ? str.slice(1) : str
 export async function getItem(href: string, mapMapPoints: {[key: string]: MapPoint}): Promise<?AlmedEvent> {
@@ -153,16 +176,23 @@ export async function getItem(href: string, mapMapPoints: {[key: string]: MapPoi
     let article: ?HTMLTreeChild = traverseTree({ children: json }, (tree2) => !!tree2.attributes && tree2.attributes.id === 'event')
     if (!article || !article.children || !article.children.length) {
       // try 2
-      article = traverseTree({ children: json }, (tree2) => !!tree2.attributes && !!tree2.attributes.className && tree2.attributes.className.some(s => s === 'main-content'))
+      article = traverseTree({ children: json }, (tree2: HTMLTreeChild) => !!tree2.attributes &&
+        !!tree2.attributes.className &&
+        Array.isArray(tree2.attributes.className) &&
+        tree2.attributes.className.some(s => s === 'main-content'))
       if (!article || !article.children || !article.children.length) {
         console.warn('no child found')
         return
       }
     }
+
+    if (!article) {
+      return
+    }
     // console.log('article', article, (article.attributes || {}))
-    const itemContent = article
+    const itemContent: HTMLTreeChild = article
     const filterFuncChildren = (filterFor: string): ?HTMLTreeChild => {
-      const item = traverseTree(article, (tree: HTMLTreeChild) => {
+      const item = traverseTree(itemContent, (tree: HTMLTreeChild) => {
         const child = applyChildren(tree, [0, 0])
         return !!child && child === filterFor
       })
@@ -204,7 +234,7 @@ export async function getItem(href: string, mapMapPoints: {[key: string]: MapPoi
       if (date && d.length > 1) {
         endDate = date.clone()
         const endTimeList = d[1].split(':')
-        if (endTimeList.length > 1) {
+        if (endDate && endTimeList.length > 1) {
           endDate.hour(endTimeList[0])
           endDate.minute(endTimeList[1])
         }
@@ -235,9 +265,10 @@ export async function getItem(href: string, mapMapPoints: {[key: string]: MapPoi
       availabilty: filterFunc('Tillgänglighet:') || '',
       live: !!(live && live.includes('Ja')),
       food: !!(food && food.includes('Ja')),
-      web: [((traverseTree(itemContent, (child) => ((child || {}).attributes || {}).href) || {}).attributes || {}).href]
+      web: [((traverseTree(itemContent, (child) => !!((child || {}).attributes || {}).href) || {}).attributes || {}).href]
         .filter(Boolean),
       url: `https://almedalsguiden.com/event/${id}`,
+      parties: partiesFromParticipants(participants)
       // contact: applyChildren(itemContent, [15,1,1,0,0]),
       // contactOrg: applyChildren(itemContent, [15,1,1]),
       // contactNumber: applyChildren(itemContent, [6,1,1]),

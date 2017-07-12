@@ -19,6 +19,7 @@ type AlmedEvent = {
     latitude: number,
     longitude: number,
     participants: Array<AlmedParticipant>,
+    parties: Array<string>,
     green: boolean,
     availabilty: string,
     live: boolean,

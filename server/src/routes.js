@@ -1,6 +1,7 @@
 // @flow
 import { Router } from 'express'
 
+import type { MapPoint } from './almed'
 import { getCollection, add, del } from './storage'
 import { getEvents, getMapPoints, getIds, getItem, getParsedItem, traverseTree } from './almed'
 
@@ -65,6 +66,13 @@ routes.get('/migrate', async (req, res) => {
 
 
 routes.get('/update', async (req, res) => {
+  const allData = await getEvents()
+  console.log('inserting items: ', allData.length)
+  await add(dataKey, allData)
+  res.sendStatus(200)
+})
+
+routes.get('/updateWithExistingData', async (req, res) => {
   const allData = await getEvents()
   console.log('inserting items: ', allData.length)
   await add(dataKey, allData)
