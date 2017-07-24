@@ -35,7 +35,7 @@ data class AlmedEvent(
         val date: String?,
         val endDate: String?,
         val type: String,
-        val subject: Array<String>,
+        val subject: List<String>,
         val language: String,
         val location: String,
         val locationDescription: String,
@@ -87,5 +87,25 @@ data class AlmedEvent(
 
     class Deserializer : ResponseDeserializable<AlmedEvent> {
         override fun deserialize(content: String) = Gson().fromJson<AlmedEvent>(content)
+    }
+}
+
+data class MapPoints(
+        val result: Array<MapPoint>
+) {
+    class Deserializer : ResponseDeserializable<MapPoints> {
+        override fun deserialize(content: String) = Gson().fromJson<MapPoints>(content)
+    }
+}
+
+data class MapPoint(
+        val id: String,
+        val PLACE: String,
+        val PLACE_DESCRIPTION: String,
+        val LONGITUDE: String,
+        val LATITUDE: String
+) {
+    class Deserializer : ResponseDeserializable<MapPoint> {
+        override fun deserialize(content: String) = Gson().fromJson<MapPoint>(content)
     }
 }

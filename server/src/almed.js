@@ -194,6 +194,7 @@ export async function getItem(href: string, mapMapPoints: {[key: string]: MapPoi
     const filterFuncChildren = (filterFor: string): ?HTMLTreeChild => {
       const item = traverseTree(itemContent, (tree: HTMLTreeChild) => {
         const child = applyChildren(tree, [0, 0])
+        if (!!child && child === filterFor) console.log('traverseTree', filterFor, tree)
         return !!child && child === filterFor
       })
       if (!item || !item.children) {
@@ -203,10 +204,13 @@ export async function getItem(href: string, mapMapPoints: {[key: string]: MapPoi
     }
     const filterFunc = (filterFor: string): ?string => {
       const item = filterFuncChildren(filterFor)
+      console.log(filterFor)
+      console.log(item)
       if (!item || !item.children[1]) {
         return null
       }
       const r = (item.children[1] || {}).content
+      console.log('debug', r)
       return r ? removeFirstSpace(r) : null
     }
 
@@ -223,7 +227,6 @@ export async function getItem(href: string, mapMapPoints: {[key: string]: MapPoi
         }
       })
     }
-
 
     const dd = filterFunc('Dag:')
     let endDate = null
