@@ -2,7 +2,7 @@
 import { Router } from 'express'
 
 import type { MapPoint } from './almed'
-import { getCollection, add, del } from './storage'
+import { getCollection, add, del, delItem } from './storage'
 import { getEvents, getMapPoints, getIds, getItem, getParsedItem, traverseTree } from './almed'
 
 const routes: any = Router()
@@ -96,9 +96,7 @@ routes.get('/update/:id', async (req, res) => {
 })
 
 routes.get('/delete/:id', async (req, res) => {
-  const id: string = req.params.id
-  const data = await getCollection(dataKey)
-  await add(dataKey, data.filter((item: AlmedEvent) => item.id !== id))
+  await delItem(dataKey, req.params.id)
   res.sendStatus(200)
 })
 

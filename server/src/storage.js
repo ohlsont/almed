@@ -15,6 +15,14 @@ export async function add(dataKey: string, data: Array<AlmedEvent>): Promise<any
   return addRedis(dataKey, Object.keys(itemMap).map(key => itemMap[key]))
 }
 
+export async function delItem(key: string, id: string): Promise<void> {
+  const col: ?Array<AlmedEvent> = await getCollection(key)
+  const newCol = (col || [])
+    .filter((item: AlmedEvent) => item.id !== `${id}`)
+  console.log('changing size', (col || []).length, newCol.length, `${id}`, (col || []).some((item: AlmedEvent) => item.id === `${id}`))
+  return addRedis(key, newCol)
+}
+
 export async function del(key: string): Promise<void> {
   return delRedis(key)
 }
