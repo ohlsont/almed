@@ -67,7 +67,7 @@ export default class EventsTable extends React.Component {
                         }
                         const a = new Date(e1.date).getTime()
                         const b = new Date(e2.date || '').getTime()
-                        if (a == b) {
+                        if (a === b) {
                             return sortF(e1.id < e2.id)
                         }
                         return sortF(a < b)

@@ -2,11 +2,10 @@
 import React, { Component } from 'react';
 import {
     FlatButton, AppBar, SelectField, MenuItem, Toggle,
-    Slider, AutoComplete, TimePicker, IconButton,
+    Slider, AutoComplete, TimePicker,
 } from 'material-ui';
 import injectTapEventPlugin from 'react-tap-event-plugin'
 import moment from 'moment'
-import Refresh from 'material-ui/svg-icons/navigation/refresh'
 
 import { EventsModal, ParticipantModal, CalendarModal, AlmedDrawer, Map, GDriveSave } from './components'
 import { Events, Favorites } from './services'
@@ -88,10 +87,14 @@ class App extends Component {
         })
 
         console.log('participantsMap', participantsMap)
-        const d = {
-            unixSecondsMin: Math.min(...times),
-            unixSecondsMax: Math.max(...times),
+        let d = {}
+        if (times.length) {
+            d = {
+                unixSecondsMin: Math.min(...times),
+                unixSecondsMax: Math.max(...times),
+            }
         }
+
 
         this.setState({
             points,
@@ -99,8 +102,8 @@ class App extends Component {
             participantsMap,
             subjectsObject,
             ...d,
-            choosenUnixSecondsMin: d.unixSecondsMin,
-            choosenUnixSecondsMax: d.unixSecondsMax,
+            choosenUnixSecondsMin: d.unixSecondsMin ? d.unixSecondsMin : 0,
+            choosenUnixSecondsMax: d.unixSecondsMax ? d.unixSecondsMax : Infinity,
         })
     }
 
@@ -114,15 +117,19 @@ class App extends Component {
         const { points, choosenSubjectIndex, subjectsObject, choosenDay, choosenDayEnd, nonColliding, inFuture,
             choosenUnixSecondsMin, choosenUnixSecondsMax, food } = this.state
         const subjects = Object.keys(subjectsObject || {}).sort()
-        const choosenSubject = choosenSubjectIndex != null && subjects ? subjects[choosenSubjectIndex] : null
+        const choosenSubject = choosenSubjectIndex !== null && subjects ? subjects[choosenSubjectIndex] : null
 
         const favs = Favorites.all()
         const res = points.filter((point: AlmedEvent) => {
             let keep = choosenSubject ? point.subject === choosenSubject : true
             if (point.date) {
                 const time = new Date(point.date).getTime()/1000
-                if (choosenUnixSecondsMin) keep = keep && choosenUnixSecondsMin < time
-                if (choosenUnixSecondsMax) keep = keep && choosenUnixSecondsMax > time
+                if (choosenUnixSecondsMin) {
+                    keep = keep && choosenUnixSecondsMin < time
+                }
+                if (choosenUnixSecondsMax) {
+                    keep = keep && choosenUnixSecondsMax > time
+                }
             }
 
             if (food) {
@@ -132,13 +139,12 @@ class App extends Component {
             if (nonColliding) {
                 keep = keep && !favs.some((fav: AlmedEvent) => {
                     if (!fav.date || !fav.endDate || !point.date || !point.endDate) {
-                        console.log('missing date')
                         return false
                     }
                     const start1 = (new Date(fav.date)).getTime()
-                    const end1 = (new Date(fav.endDate)).getTime()
-                    const start2 = (new Date(point.date)).getTime()
-                    const end2 = (new Date(point.endDate)).getTime()
+                    const end1 = (new Date(fav.endDate || '')).getTime()
+                    const start2 = (new Date(point.date || '')).getTime()
+                    const end2 = (new Date(point.endDate  || '')).getTime()
                     return Math.max(start1, start2) < Math.min(end1, end2)
                 })
             }
@@ -293,10 +299,11 @@ class App extends Component {
     }
 
     renderAppBar(filteredPoints: Array<AlmedEvent>) {
-        const { participantsMap } = this.state
+        const { participantsMap, points } = this.state
 
         const content = <div>
-            <div>Seminars {filteredPoints.length}</div>
+            <div>Seminars showing {points.length}</div>
+            <div>Seminars in store {filteredPoints.length}</div>
             {this.renderDaySelector()}
             <Toggle
                 style={{ width: 20 }}
