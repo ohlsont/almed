@@ -54,6 +54,14 @@ class App extends Component {
     }
 
     componentWillMount() {
+        this.setPoints()
+    }
+
+    async setPoints() {
+        let events = Events.getPersistentEvents() || []
+        if (!events.length) {
+            events = await Events.saveData() || []
+        }
         this.setState({ points: Events.getPersistentEvents() }, () => this.setup())
     }
 
