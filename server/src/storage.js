@@ -9,7 +9,7 @@ export async function add(dataKey: string, data: Array<AlmedEvent>): Promise<any
     acc[ev.id] = ev
     return acc
   }
-  const items = await getRedis(dataKey)
+  const items: Array<AlmedEvent> = await getRedis(dataKey) || []
   const itemMap = data
     .reduce(reduceF, items.reduce(reduceF, {}))
   return addRedis(dataKey, Object.keys(itemMap).map(key => itemMap[key]))
@@ -46,7 +46,7 @@ async function delRedis(key: string): Promise<void> {
   return addRedis(key, null)
 }
 
-async function getRedis(key: string): Promise<any> {
+async function getRedis(key: string): Promise<?any> {
   return new Promise((r, re) => {
     redisClient.get(key, (err, result) => {
       if (err) {
