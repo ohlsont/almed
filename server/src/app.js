@@ -12,6 +12,7 @@ app.use(compression())
 
 const whitelist = [
   'https://ohlsont.github.com/almed',
+  'https://almed.herokuapp.com/almed',
   // 'http://localhost:8080',
   // 'http://localhost:3000',
   'http://evil.com/',
