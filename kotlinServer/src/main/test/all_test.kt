@@ -10,6 +10,15 @@ class HelloTest {
         assertTrue(ids.count() > 0)
     }
 
+    @Test fun testSave() : Unit {
+        val mapPoints = Almed.getMapPoints()?.map { it.id to it }?.toMap()
+        if (mapPoints == null) {
+            return
+        }
+        val id = 6862
+        val item = Almed.getItem("item/$id", mapPoints)
+    }
+
     @Test fun testItem() : Unit {
         val mapPoints = Almed.getMapPoints()?.map { it.id to it }?.toMap()
         assertNotNull(mapPoints)
@@ -50,7 +59,6 @@ class HelloTest {
         for(i in 0..(item?.parties?.count() ?: 1)) {
             assertEquals(storedItem.parties?.getOrNull(i), item?.parties?.getOrNull(i))
         }
-
     }
 }
 
