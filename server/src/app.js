@@ -18,7 +18,7 @@ const whitelist = [
   'http://evil.com/',
 ]
 const corsOptions = {
-  origin: function (origin, callback) {
+  origin: function (origin: string, callback, dd) {
     if (whitelist.indexOf(origin) !== -1) {
       callback(null, true)
     } else {
@@ -26,7 +26,8 @@ const corsOptions = {
     }
   }
 }
-app.use(cors(corsOptions))
+// app.use(cors(corsOptions))
+app.use(cors())
 app.disable('x-powered-by')
 
 // View engine setup

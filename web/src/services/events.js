@@ -3,6 +3,7 @@
 const eventsKey = 'items'
 const dbVersionKey = 'dbVersion'
 const currentVersion = '3'
+const backendUrl = 'https://almed.herokuapp.com'
 export default class Events {
     static migrateDB() {
         const version: ?string = localStorage.getItem(dbVersionKey)
@@ -43,12 +44,16 @@ export default class Events {
         console.log('gettingItemsFromServer')
         const allData: Array<AlmedEvent> = await Events.fetchJson(
             'GET',
-            'http://localhost:8080',
+            backendUrl,
             // 'https://almed-171122.appspot.com/',
         )
         console.log('items gotten from server', allData)
         localStorage.setItem('items', JSON.stringify(allData))
         return allData
+    }
+
+    static async updateData(): Promise<any> {
+        fetch(`${backendUrl}/update`)
     }
 
     static getPersistentEvents(): Array<AlmedEvent> {

@@ -318,7 +318,11 @@ class App extends Component {
                 onClick={() => this.downloadSaveData()}
             />
             <FlatButton
-                label={'SaveToDisk'}
+                label={'Update backend'}
+                onClick={() => Events.updateData()}
+            />
+            <FlatButton
+                label={'Export'}
                 onClick={() => saveToDisk(JSON.stringify(Favorites.all()))}
             />
 
@@ -326,7 +330,6 @@ class App extends Component {
         return <AppBar
             title={'Almedalen'}
             iconElementLeft={<AlmedDrawer content={content} />}
-            iconElementRight={<IconButton tooltip="Reload favorites"><Refresh /></IconButton>}
         />
     }
 
