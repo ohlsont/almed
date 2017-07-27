@@ -18,7 +18,7 @@ const whitelist = [
   'http://evil.com/',
 ]
 const corsOptions = {
-  origin: function (origin: string, callback, dd) {
+  origin: (origin: string, callback: (err2: ?Error, origin: ?boolean)=>void) => {
     if (whitelist.indexOf(origin) !== -1) {
       callback(null, true)
     } else {
