@@ -96,9 +96,9 @@ routes.get('/update/:id', async (req, res) => {
 })
 
 routes.get('/delete/:id', async (req, res) => {
-  const id: number = parseInt(req.params.id || "0", 10)
+  const id: string = req.params.id
   const data = await getCollection(dataKey)
-  await add(dataKey, data.filter(item => item.id !== id))
+  await add(dataKey, data.filter((item: AlmedEvent) => item.id !== id))
   res.sendStatus(200)
 })
 
