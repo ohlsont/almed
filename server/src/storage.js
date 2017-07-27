@@ -29,7 +29,7 @@ export async function getCollection(key: string): Promise<any> {
 
 
 // redis
-const redisClient = new Redis()
+const redisClient = new Redis(process.env.REDIS_URL)
 async function addRedis(dataKey: string, data: any): Promise<any> {
   return new Promise((r, re) => {
     redisClient.set(dataKey, JSON.stringify(data), (err, result) => {
