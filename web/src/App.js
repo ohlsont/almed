@@ -400,8 +400,8 @@ class App extends Component {
         const { participantsMap, points } = this.state
 
         const content = <div>
-            <div>Seminars showing {points.length}</div>
-            <div>Seminars in store {filteredPoints.length}</div>
+            <div>Seminars in store {points.length}</div>
+            <div>Seminars showing {filteredPoints.length}</div>
             {this.renderDaySelector()}
             {this.renderToggles()}
             <ParticipantModal participantsMap={participantsMap}/>
