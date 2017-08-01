@@ -2,18 +2,43 @@
 import React, { Component } from 'react';
 import {
     FlatButton, AppBar, SelectField, MenuItem, Toggle,
-    Slider, AutoComplete, TimePicker,
-} from 'material-ui';
+    Slider, AutoComplete, TimePicker, IconButton,
+} from 'material-ui'
+
 import injectTapEventPlugin from 'react-tap-event-plugin'
 import moment from 'moment'
+import FacebookProvider, { Login } from 'react-facebook'
+import Download from 'material-ui/svg-icons/file/file-download'
+import RefreshIcon from 'material-ui/svg-icons/navigation/refresh'
 
-import { EventsModal, ParticipantModal, CalendarModal, AlmedDrawer, Map, GDriveSave } from './components'
+import { EventsModal, ParticipantModal, CalendarModal, AlmedDrawer, Map } from './components'
 import { Events, Favorites } from './services'
 import EventsTable from "./components/eventsTable"
 
 // Needed for onTouchTap
 // http://stackoverflow.com/a/34015469/988941
 injectTapEventPlugin()
+
+type FacebookLoginData = {
+    profile: {
+        id: string,
+        first_name: string,
+        last_name: string,
+        name: string,
+        email: string,
+        locale: string,
+        gender: string,
+        timezone: number,
+        verified: boolean,
+        link: string,
+    },
+    tokenDetail: {
+        accessToken: string,
+        userID: string,
+        expiresIn: number,
+        signedRequest: string,
+    },
+}
 
 type Appstate = {
     points: Array<AlmedEvent>,
@@ -124,8 +149,8 @@ class App extends Component {
     filterPoints() {
         const { points, choosenSubjectIndex, subjectsObject, choosenDay, choosenDayEnd, nonColliding, inFuture,
             choosenUnixSecondsMin, choosenUnixSecondsMax, food } = this.state
-        const subjects = Object.keys(subjectsObject || {}).sort()
-        const choosenSubject = choosenSubjectIndex !== null && subjects ? subjects[choosenSubjectIndex] : null
+        const subjects: Array<string> = Object.keys(subjectsObject || {}).sort()
+        const choosenSubject: ?string = choosenSubjectIndex && subjects ? subjects[choosenSubjectIndex] : null
 
         const favs = Favorites.all()
         const res = points.filter((point: AlmedEvent) => {
@@ -306,6 +331,71 @@ class App extends Component {
         </div>
     }
 
+    renderFacebookLogin() {
+        return <FacebookProvider appId="512783022397010">
+            <Login
+                scope="email"
+                onResponse={(data) => console.log(data, JSON.stringify(data))}
+                onError={(error) => console.log('debug', error)}
+            >
+                <span>Login via Facebook</span>
+            </Login>
+        </FacebookProvider>
+    }
+
+    renderToggles() {
+        const styles = {
+            block: {
+                maxWidth: 250,
+            },
+            toggle: {
+                marginBottom: 16,
+            },
+            thumbOff: {
+                backgroundColor: '#ffcccc',
+            },
+            trackOff: {
+                backgroundColor: '#ff9d9d',
+            },
+            thumbSwitched: {
+                backgroundColor: 'red',
+            },
+            trackSwitched: {
+                backgroundColor: '#ff9d9d',
+            },
+            labelStyle: {
+                color: 'red',
+            },
+        };
+        return <div>
+            <IconButton tooltip="Only show events not colliding with your favorites">
+                <Toggle
+                    style={{ width: 20 }}
+                    label="Non colliding"
+                    onToggle={(e, value) => this.setState({ nonColliding: value }, () => this.setup())}
+                    thumbStyle={styles.thumbOff}
+                    trackStyle={styles.trackOff}
+                    thumbSwitchedStyle={styles.thumbSwitched}
+                    trackSwitchedStyle={styles.trackSwitched}
+                    labelStyle={styles.labelStyle}
+                />
+            </IconButton>
+            <IconButton tooltip="Only show future seminars">
+                <Toggle
+                    style={{ width: 20 }}
+                    defaultToggled={true}
+                    label="In the future"
+                    onToggle={(e, value) => this.setState({ inFuture: value }, () => this.setup())}
+                    thumbStyle={styles.thumbOff}
+                    trackStyle={styles.trackOff}
+                    thumbSwitchedStyle={styles.thumbSwitched}
+                    trackSwitchedStyle={styles.trackSwitched}
+                    labelStyle={styles.labelStyle}
+                />
+            </IconButton>
+        </div>
+    }
+
     renderAppBar(filteredPoints: Array<AlmedEvent>) {
         const { participantsMap, points } = this.state
 
@@ -313,18 +403,7 @@ class App extends Component {
             <div>Seminars showing {points.length}</div>
             <div>Seminars in store {filteredPoints.length}</div>
             {this.renderDaySelector()}
-            <Toggle
-                style={{ width: 20 }}
-                label="Non colliding"
-                onToggle={(e, value) => this.setState({ nonColliding: value }, () => this.setup())}
-            />
-            <Toggle
-                style={{ width: 20 }}
-                defaultToggled={true}
-                label="In the future"
-                onToggle={(e, value) => this.setState({ inFuture: value }, () => this.setup())}
-            />
-            <GDriveSave />
+            {this.renderToggles()}
             <ParticipantModal participantsMap={participantsMap}/>
             <EventsModal events={filteredPoints}/>
             <CalendarModal events={filteredPoints}/>
@@ -340,11 +419,31 @@ class App extends Component {
                 label={'Export'}
                 onClick={() => saveToDisk(JSON.stringify(Favorites.all()))}
             />
-
+            {this.renderFacebookLogin()}
         </div>
         return <AppBar
-            title={'Almedalen'}
+            title={`Almedalen with ${points.length} seminars`}
             iconElementLeft={<AlmedDrawer content={content} />}
+            iconElementRight={<div style={{ display: 'flex' }}>
+                {this.renderToggles()}
+                <div style={{ width: '2em' }}></div>
+                <IconButton
+                    onClick={() => this.downloadSaveData()}
+                    tooltip="Update events from server"
+                >
+                    <RefreshIcon color="white" />
+                </IconButton>
+                <Map points={Favorites.all()} modal={true} />
+                <ParticipantModal participantsMap={participantsMap} iconButton={true} />
+                <EventsModal events={filteredPoints} iconButton={true} />
+                <CalendarModal events={filteredPoints} iconButton={true} />
+                <IconButton
+                    tooltip="Download favorites as file"
+                    onClick={() => saveToDisk(JSON.stringify(Favorites.all()))}
+                >
+                    <Download color="white" />
+                </IconButton>
+            </div>}
         />
     }
 
@@ -352,18 +451,11 @@ class App extends Component {
         const { points, filteredPoints } = this.state
         return <div className="App">
             {this.renderAppBar(filteredPoints)}
-            <div style={{ display: 'flex' }}>
-                <div style={{ width: '75%' }}>
-                    <EventsTable
-                        events={points}
-                        onlyFavs={true}
-                        defaultSort="time"
-                    />
-                </div>
-                <div style={{ width: '25%' }}>
-                    <Map points={Favorites.all()} />
-                </div>
-            </div>
+            <EventsTable
+                events={points}
+                onlyFavs={true}
+                defaultSort="time"
+            />
         </div>
     }
 }

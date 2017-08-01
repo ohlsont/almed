@@ -1,8 +1,9 @@
 // @flow
 import React from 'react'
 import {
-    Dialog, FlatButton, TextField, Toggle,
+    Dialog, FlatButton, TextField, Toggle, IconButton,
 } from 'material-ui'
+import ViewList from 'material-ui/svg-icons/action/view-list'
 
 import { EventsTable } from './'
 
@@ -41,11 +42,12 @@ export default class EventsModal extends React.Component {
         choosenEvent?: AlmedEvent,
         buttonStyle?: Object,
         withOutButton?: boolean,
-        onCloseCallback?: () => void
+        onCloseCallback?: () => void,
+        iconButton?: boolean,
     }
 
     render() {
-        const { events, buttonStyle, withOutButton } = this.props
+        const { events, buttonStyle, withOutButton, iconButton } = this.props
         const { open, titleFilterText, descFilterText, currentLimit,
             orgFilterText, foodFilter, onlyFavs } = this.state
         const actions = [
@@ -75,9 +77,20 @@ export default class EventsModal extends React.Component {
             sortedEvents = sortedEvents.filter(event => event.food)
         }
 
+        const b = iconButton ? <IconButton
+            tooltip="View all seminars with current filtering"
+            onTouchTap={this.handleOpen}
+        >
+            <ViewList color="white" />
+        </IconButton> :  <FlatButton
+            label="Seminars"
+            onTouchTap={this.handleOpen}
+            labelStyle={buttonStyle}
+        />
+
         return (
             <div style={{ marginRight: '1em' }}>
-                {!withOutButton && <FlatButton label="Seminars" onTouchTap={this.handleOpen} labelStyle={buttonStyle} />}
+                {!withOutButton && b}
                 <Dialog
                     title={`Seminars, showing ${currentLimit < sortedEvents.length ? `${currentLimit} of ${sortedEvents.length}` : sortedEvents.length }`}
                     actions={actions}

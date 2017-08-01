@@ -1,10 +1,12 @@
 // @flow
 import React from 'react'
 import {
-    Dialog, FlatButton,
+    Dialog, FlatButton, IconButton,
 } from 'material-ui'
 import moment from 'moment'
 import BigCalendar from 'react-big-calendar'
+import EventIcon from 'material-ui/svg-icons/action/event'
+
 import 'react-big-calendar/lib/css/react-big-calendar.css'
 
 import { EventModal } from './'
@@ -35,11 +37,12 @@ export default class CalendarModal extends React.Component {
     props: {
         events: Array<AlmedEvent>,
         buttonStyle?: Object,
+        iconButton?: boolean,
     }
 
     render() {
         const events = Favorites.all()
-        const { buttonStyle } = this.props
+        const { buttonStyle, iconButton } = this.props
         const { open, view, choosenEvent } = this.state
         const actions = [
             <FlatButton
@@ -61,9 +64,16 @@ export default class CalendarModal extends React.Component {
             }
         }).filter(Boolean)
 
+        const b = iconButton ? <IconButton
+            tooltip="View all favorites as calendar"
+            onClick={this.handleOpen}
+        >
+            <EventIcon color="white" />
+        </IconButton> :  <FlatButton label="Calendar" onTouchTap={this.handleOpen} labelStyle={buttonStyle} />
+
         return (
             <div style={{ marginRight: '1em' }}>
-                <FlatButton label="Calendar" onTouchTap={this.handleOpen} labelStyle={buttonStyle} />
+                {b}
                 <Dialog
                     title="Calendar"
                     actions={actions}
