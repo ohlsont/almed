@@ -55,7 +55,6 @@ export class EventItem extends React.Component {
                     const q = `${part.name}+${part.title}+${part.company}`
                     const url = `https://www.google.se/search?q=${q}&oq=${q}`
                     console.log('goto', url)
-                    {/*<a href={url}>Ask Google who it is!</a>*/}
                 }}
             >
                 <CardHeader

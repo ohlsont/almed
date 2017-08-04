@@ -1,9 +1,10 @@
 // @flow
 import React from 'react'
 import {
-    Dialog, FlatButton, TextField,
+    Dialog, FlatButton, TextField, IconButton,
     Table, TableRow, TableHeader, TableHeaderColumn, TableRowColumn, TableBody,
 } from 'material-ui'
+import PeopleIcon from 'material-ui/svg-icons/social/people'
 
 import { EventsModal } from './'
 import { Events } from '../services'
@@ -31,10 +32,11 @@ export default class ParticipantModal extends React.Component {
     props: {
         participantsMap: {[key: string]: [AlmedParticipant, number]},
         buttonStyle?: Object,
+        iconButton?: boolean,
     }
 
     render() {
-        const { participantsMap, buttonStyle } = this.props
+        const { participantsMap, buttonStyle, iconButton } = this.props
         const {
             sort, asc, open, titleFilterText, companyFilterText, nameFilterText, choosenEvents, limit,
         } = this.state
@@ -77,9 +79,19 @@ export default class ParticipantModal extends React.Component {
         filter('company', companyFilterText)
         filter('name', nameFilterText)
 
+        const b = iconButton ? <IconButton
+            tooltip="View all participants with current filtering"
+            onClick={this.handleOpen}
+        >
+            <PeopleIcon color="white" />
+        </IconButton> :  <FlatButton
+            label="Participants"
+            onTouchTap={this.handleOpen}
+            labelStyle={buttonStyle}
+        />
         return (
             <div style={{ marginRight: '1em' }}>
-                <FlatButton label="Participants" onTouchTap={this.handleOpen} labelStyle={buttonStyle} />
+                {b}
                 <Dialog
                     title={`Participants, showing ${limit < parts.length ? `${limit} of ${parts.length}` : parts.length }`}
                     actions={actions}

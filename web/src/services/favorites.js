@@ -1,5 +1,5 @@
 // @flow
-
+import { backendUrl } from '../constants'
 const favKeys = 'favKeys'
 
 const getFavs = () => {
@@ -24,5 +24,11 @@ export default class Favorites {
 
     static delete(event: AlmedEvent) {
         saveFavs(getFavs().filter((fav) => fav.id !== event.id))
+    }
+
+    static async auth(fbToken: string) {
+        const url = `${backendUrl}/auth/facebook/token?access_token=${fbToken}`
+        const fbResponse = await fetch(url)
+        console.log('fbResponse', fbResponse)
     }
 }

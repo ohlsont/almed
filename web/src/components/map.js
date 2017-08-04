@@ -1,6 +1,8 @@
 // @flow
 import React from 'react'
 import ReactMapboxGl, { Cluster, Marker } from 'react-mapbox-gl'
+import { Dialog, IconButton } from 'material-ui'
+import MapIcon from 'material-ui/svg-icons/maps/map'
 
 import { ItemDrawer  } from './'
 
@@ -18,7 +20,8 @@ class Map extends React.Component {
             se: Coord,
             sw: Coord,
             ne: Coord,
-        }
+        },
+        open?: boolean,
     } = {
         bounds: {
             nw: { lat: 0, lng: 0 },
@@ -51,9 +54,30 @@ class Map extends React.Component {
 
     props: {
         points: Array<AlmedEvent>,
+        modal?: boolean,
     }
 
-    render() {
+    renderModalMap() {
+        return <div>
+            <IconButton
+                tooltip="View all favorites on map"
+                onClick={() => this.setState({ open: true })}
+            >
+                <MapIcon color="white" />
+            </IconButton>
+            <Dialog
+                title={'Map'}
+                modal={false}
+                open={!!this.state.open}
+                autoScrollBodyContent={true}
+                onRequestClose={() => this.setState({ open: false })}
+            >
+                {this.renderMap()}
+            </Dialog>
+        </div>
+    }
+
+    renderMap() {
         const { points } = this.props
         const { bounds, choosenPoint } = this.state
         const Map = ReactMapboxGl({
@@ -137,6 +161,11 @@ class Map extends React.Component {
                 {/*</Popup>}*/}
             </Map>
         </div>
+    }
+
+    render() {
+        const { modal } = this.props
+        return modal ? this.renderModalMap() : this.renderMap()
     }
 }
 

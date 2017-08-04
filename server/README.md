@@ -100,6 +100,12 @@ The last command is generally what most hosting providers use to start your appl
 
 You can find small guides for Heroku, App Engine and AWS in [the deployment](DEPLOYMENT.md) document.
 
+### Heroku
+deploy from root folder
+```sh
+  git subtree push --prefix server heroku master
+```
+
 ## FAQ
 
 **Where is all the configuration for ESLint, Jest and Babel?**

@@ -27,3 +27,26 @@ type AlmedEvent = {
     web: Array<string>,
     url: string,
 }
+
+type FacebookProfile = {
+    id: string,
+    first_name: string,
+    last_name: string,
+    name: string,
+    email: string,
+    locale: string,
+    gender: string,
+    timezone: number,
+    verified: boolean,
+    link: string,
+}
+
+type FacebookLoginData = {
+    profile: FacebookProfile,
+    tokenDetail: {
+        accessToken: string,
+        userID: string,
+        expiresIn: number,
+        signedRequest: string,
+    },
+}

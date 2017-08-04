@@ -1,18 +1,27 @@
 // @flow
-import Datastore from '@google-cloud/datastore'
 import Redis from 'ioredis'
 
-import { makeChunks } from './utils'
-
-export async function add(dataKey: string, data: Array<AlmedEvent>): Promise<any> {
-  const reduceF = (acc, ev) => {
-    acc[ev.id] = ev
-    return acc
+export async function add(dataKey: string, data: any): Promise<any> {
+  const item = await getRedis(dataKey) || []
+  if (Array.isArray(item)) {
+    const reduceF = (acc, ev) => {
+      acc[ev.id] = ev
+      return acc
+    }
+    const itemMap = data
+      .reduce(reduceF, item.reduce(reduceF, {}))
+    const resMap = Object.keys(itemMap).map(key => itemMap[key])
+    return addRedis(dataKey, resMap)
   }
-  const items = await getRedis(dataKey)
-  const itemMap = data
-    .reduce(reduceF, items.reduce(reduceF, {}))
-  return addRedis(dataKey, Object.keys(itemMap).map(key => itemMap[key]))
+  return addRedis(dataKey, data)
+}
+
+export async function delItem(key: string, id: string): Promise<void> {
+  const col: ?Array<AlmedEvent> = await getCollection(key)
+  const newCol = (col || [])
+    .filter((item: AlmedEvent) => item.id !== `${id}`)
+  console.log('changing size', (col || []).length, newCol.length, `${id}`, (col || []).some((item: AlmedEvent) => item.id === `${id}`))
+  return addRedis(key, newCol)
 }
 
 export async function del(key: string): Promise<void> {
@@ -29,7 +38,7 @@ export async function getCollection(key: string): Promise<any> {
 
 
 // redis
-const redisClient = new Redis()
+const redisClient = new Redis(process.env.REDIS_URL)
 async function addRedis(dataKey: string, data: any): Promise<any> {
   return new Promise((r, re) => {
     redisClient.set(dataKey, JSON.stringify(data), (err, result) => {
@@ -46,7 +55,7 @@ async function delRedis(key: string): Promise<void> {
   return addRedis(key, null)
 }
 
-async function getRedis(key: string): Promise<any> {
+async function getRedis(key: string): Promise<?any> {
   return new Promise((r, re) => {
     redisClient.get(key, (err, result) => {
       if (err) {
@@ -56,51 +65,4 @@ async function getRedis(key: string): Promise<any> {
       r(JSON.parse(result))
     })
   })
-}
-
-// Google datastore
-const datastore = Datastore()
-
-const getKey = (key: string, id: string = 'data') => datastore.key([key, id])
-async function addGAE(dataKey: string, data: Array<any>): Promise<any> {
-  const entitys = data.map(d => ({
-    key: getKey(dataKey, d.id),
-    data: Object.keys(d)
-      .filter(key => d[key])
-      .map(key => ({
-        name: key,
-        value: d[key],
-      }))
-  }))
-  makeChunks(entitys, 499).map(async (chunk) =>{
-    await datastore.save(chunk)
-  })
-
-  //
-  console.log(`Task ${dataKey} created successfully.`)
-  return dataKey
-}
-
-async function delGAE(key: string): Promise<void> {
-  const col = await getCollectionGoogle(key)
-  const transaction = datastore.transaction()
-
-  transaction.run(() => {
-    makeChunks(col, 499).map(chunk => chunk.map((item) => {
-      transaction.delete(getKey(key, item.id))
-    }))
-    transaction.commit()
-  })
-  console.log('delete result')
-}
-
-async function getGAE(key: string): Promise<any> {
-  return await datastore.get(getKey(key))
-}
-
-async function getCollectionGoogle(key: string): Promise<any> {
-  const query = datastore.createQuery(key)
-  const res = await datastore.runQuery(query)
-  console.log('got from remote', res[0].length)
-  return res[0]
 }

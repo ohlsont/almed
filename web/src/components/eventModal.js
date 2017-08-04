@@ -23,7 +23,7 @@ export default class EventModal extends React.Component {
             autoScrollBodyContent={true}
             onRequestClose={() => onClose()}
         >
-            <EventItem item={item} noTitle={true} />
+            {item && <EventItem item={item} noTitle={true} />}
         </Dialog>
     }
 }

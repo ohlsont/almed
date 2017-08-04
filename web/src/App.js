@@ -2,13 +2,17 @@
 import React, { Component } from 'react';
 import {
     FlatButton, AppBar, SelectField, MenuItem, Toggle,
-    Slider, AutoComplete, TimePicker, IconButton,
-} from 'material-ui';
+    Slider, AutoComplete, TimePicker, IconButton, SvgIcon,
+    CircularProgress,
+} from 'material-ui'
+
 import injectTapEventPlugin from 'react-tap-event-plugin'
 import moment from 'moment'
-import Refresh from 'material-ui/svg-icons/navigation/refresh'
+import FacebookProvider, { Login } from 'react-facebook'
+import Download from 'material-ui/svg-icons/file/file-download'
+import RefreshIcon from 'material-ui/svg-icons/navigation/refresh'
 
-import { EventsModal, ParticipantModal, CalendarModal, AlmedDrawer, Map, GDriveSave } from './components'
+import { EventsModal, ParticipantModal, CalendarModal, AlmedDrawer, Map } from './components'
 import { Events, Favorites } from './services'
 import EventsTable from "./components/eventsTable"
 
@@ -38,6 +42,12 @@ type Appstate = {
     food?: boolean,
 }
 
+const FBIcon = (props) => (
+    <SvgIcon {...props}>
+        <path d="M5,3H19A2,2 0 0,1 21,5V19A2,2 0 0,1 19,21H5A2,2 0 0,1 3,19V5A2,2 0 0,1 5,3M18,5H15.5A3.5,3.5 0 0,0 12,8.5V11H10V14H12V21H15V14H18V11H15V9A1,1 0 0,1 16,8H18V5Z" />
+    </SvgIcon>
+);
+
 function saveToDisk(text: string, name: string = 'favorites.txt', type: string = 'text/plain') {
     var a = document.createElement("a");
     var file = new Blob([text], {type: type});
@@ -55,6 +65,14 @@ class App extends Component {
     }
 
     componentWillMount() {
+        this.setPoints()
+    }
+
+    async setPoints() {
+        let events = Events.getPersistentEvents() || []
+        if (!events.length) {
+            events = await Events.saveData() || []
+        }
         this.setState({ points: Events.getPersistentEvents() }, () => this.setup())
     }
 
@@ -88,10 +106,14 @@ class App extends Component {
         })
 
         console.log('participantsMap', participantsMap)
-        const d = {
-            unixSecondsMin: Math.min(...times),
-            unixSecondsMax: Math.max(...times),
+        let d = {}
+        if (times.length) {
+            d = {
+                unixSecondsMin: Math.min(...times),
+                unixSecondsMax: Math.max(...times),
+            }
         }
+
 
         this.setState({
             points,
@@ -99,8 +121,8 @@ class App extends Component {
             participantsMap,
             subjectsObject,
             ...d,
-            choosenUnixSecondsMin: d.unixSecondsMin,
-            choosenUnixSecondsMax: d.unixSecondsMax,
+            choosenUnixSecondsMin: d.unixSecondsMin ? d.unixSecondsMin : 0,
+            choosenUnixSecondsMax: d.unixSecondsMax ? d.unixSecondsMax : Infinity,
         })
     }
 
@@ -113,16 +135,20 @@ class App extends Component {
     filterPoints() {
         const { points, choosenSubjectIndex, subjectsObject, choosenDay, choosenDayEnd, nonColliding, inFuture,
             choosenUnixSecondsMin, choosenUnixSecondsMax, food } = this.state
-        const subjects = Object.keys(subjectsObject || {}).sort()
-        const choosenSubject = choosenSubjectIndex != null && subjects ? subjects[choosenSubjectIndex] : null
+        const subjects: Array<string> = Object.keys(subjectsObject || {}).sort()
+        const choosenSubject: ?string = choosenSubjectIndex && subjects ? subjects[choosenSubjectIndex] : null
 
         const favs = Favorites.all()
         const res = points.filter((point: AlmedEvent) => {
             let keep = choosenSubject ? point.subject === choosenSubject : true
             if (point.date) {
                 const time = new Date(point.date).getTime()/1000
-                if (choosenUnixSecondsMin) keep = keep && choosenUnixSecondsMin < time
-                if (choosenUnixSecondsMax) keep = keep && choosenUnixSecondsMax > time
+                if (choosenUnixSecondsMin) {
+                    keep = keep && choosenUnixSecondsMin < time
+                }
+                if (choosenUnixSecondsMax) {
+                    keep = keep && choosenUnixSecondsMax > time
+                }
             }
 
             if (food) {
@@ -132,13 +158,12 @@ class App extends Component {
             if (nonColliding) {
                 keep = keep && !favs.some((fav: AlmedEvent) => {
                     if (!fav.date || !fav.endDate || !point.date || !point.endDate) {
-                        console.log('missing date')
                         return false
                     }
                     const start1 = (new Date(fav.date)).getTime()
-                    const end1 = (new Date(fav.endDate)).getTime()
-                    const start2 = (new Date(point.date)).getTime()
-                    const end2 = (new Date(point.endDate)).getTime()
+                    const end1 = (new Date(fav.endDate || '')).getTime()
+                    const start2 = (new Date(point.date || '')).getTime()
+                    const end2 = (new Date(point.endDate  || '')).getTime()
                     return Math.max(start1, start2) < Math.min(end1, end2)
                 })
             }
@@ -292,24 +317,91 @@ class App extends Component {
         </div>
     }
 
+    handleFacebookLoginResponse(data: FacebookLoginData) {
+        console.log(data, JSON.stringify(data))
+        Favorites.auth(data.tokenDetail.accessToken)
+
+    }
+
+    renderFacebookLogin() {
+        return <FacebookProvider appId="512783022397010">
+            <Login
+                scope="email"
+                onResponse={(data) => this.handleFacebookLoginResponse(data)}
+                onError={(error) => console.log('debug', error)}
+                render={({ isLoading, isWorking, onClick }) => isLoading ? <CircularProgress /> : <IconButton
+                    tooltip="Login with facebook to sync favorites"
+                    onClick={onClick}
+                >
+                    <FBIcon color="white" />
+                </IconButton>}
+            >
+                <span>Login via Facebook</span>
+            </Login>
+        </FacebookProvider>
+    }
+
+    renderToggles() {
+        const styles = {
+            block: {
+                maxWidth: 250,
+            },
+            toggle: {
+                marginBottom: 16,
+            },
+            thumbOff: {
+                backgroundColor: '#ffcccc',
+            },
+            trackOff: {
+                backgroundColor: '#ff9d9d',
+            },
+            thumbSwitched: {
+                backgroundColor: 'red',
+            },
+            trackSwitched: {
+                backgroundColor: '#ff9d9d',
+            },
+            labelStyle: {
+                color: 'red',
+            },
+        };
+        return <div>
+            <IconButton tooltip="Only show events not colliding with your favorites">
+                <Toggle
+                    style={{ width: 20 }}
+                    label="Non colliding"
+                    onToggle={(e, value) => this.setState({ nonColliding: value }, () => this.setup())}
+                    thumbStyle={styles.thumbOff}
+                    trackStyle={styles.trackOff}
+                    thumbSwitchedStyle={styles.thumbSwitched}
+                    trackSwitchedStyle={styles.trackSwitched}
+                    labelStyle={styles.labelStyle}
+                />
+            </IconButton>
+            <IconButton tooltip="Only show future seminars">
+                <Toggle
+                    style={{ width: 20 }}
+                    defaultToggled={true}
+                    label="In the future"
+                    onToggle={(e, value) => this.setState({ inFuture: value }, () => this.setup())}
+                    thumbStyle={styles.thumbOff}
+                    trackStyle={styles.trackOff}
+                    thumbSwitchedStyle={styles.thumbSwitched}
+                    trackSwitchedStyle={styles.trackSwitched}
+                    labelStyle={styles.labelStyle}
+                />
+            </IconButton>
+        </div>
+    }
+
     renderAppBar(filteredPoints: Array<AlmedEvent>) {
-        const { participantsMap } = this.state
+        const { participantsMap, points } = this.state
 
         const content = <div>
-            <div>Seminars {filteredPoints.length}</div>
+            <div>Seminars in store {points.length}</div>
+            <div>Seminars showing {filteredPoints.length}</div>
             {this.renderDaySelector()}
-            <Toggle
-                style={{ width: 20 }}
-                label="Non colliding"
-                onToggle={(e, value) => this.setState({ nonColliding: value }, () => this.setup())}
-            />
-            <Toggle
-                style={{ width: 20 }}
-                defaultToggled={true}
-                label="In the future"
-                onToggle={(e, value) => this.setState({ inFuture: value }, () => this.setup())}
-            />
-            <GDriveSave />
+            {this.renderToggles()}
             <ParticipantModal participantsMap={participantsMap}/>
             <EventsModal events={filteredPoints}/>
             <CalendarModal events={filteredPoints}/>
@@ -318,15 +410,39 @@ class App extends Component {
                 onClick={() => this.downloadSaveData()}
             />
             <FlatButton
-                label={'SaveToDisk'}
+                label={'Update backend'}
+                onClick={() => Events.updateData()}
+            />
+            <FlatButton
+                label={'Export'}
                 onClick={() => saveToDisk(JSON.stringify(Favorites.all()))}
             />
-
+            {this.renderFacebookLogin()}
         </div>
         return <AppBar
-            title={'Almedalen'}
+            title={`Almedalen with ${points.length} seminars`}
             iconElementLeft={<AlmedDrawer content={content} />}
-            iconElementRight={<IconButton tooltip="Reload favorites"><Refresh /></IconButton>}
+            iconElementRight={<div style={{ display: 'flex' }}>
+                {this.renderToggles()}
+                <div style={{ width: '2em' }}></div>
+                <IconButton
+                    onClick={() => this.downloadSaveData()}
+                    tooltip="Update events from server"
+                >
+                    <RefreshIcon color="white" />
+                </IconButton>
+                <Map points={Favorites.all()} modal={true} />
+                <ParticipantModal participantsMap={participantsMap} iconButton={true} />
+                <EventsModal events={filteredPoints} iconButton={true} />
+                <CalendarModal events={filteredPoints} iconButton={true} />
+                <IconButton
+                    tooltip="Download favorites as file"
+                    onClick={() => saveToDisk(JSON.stringify(Favorites.all()))}
+                >
+                    <Download color="white" />
+                </IconButton>
+                {this.renderFacebookLogin()}
+            </div>}
         />
     }
 
@@ -334,18 +450,11 @@ class App extends Component {
         const { points, filteredPoints } = this.state
         return <div className="App">
             {this.renderAppBar(filteredPoints)}
-            <div style={{ display: 'flex' }}>
-                <div style={{ width: '75%' }}>
-                    <EventsTable
-                        events={points}
-                        onlyFavs={true}
-                        defaultSort="time"
-                    />
-                </div>
-                <div style={{ width: '25%' }}>
-                    <Map points={Favorites.all()} />
-                </div>
-            </div>
+            <EventsTable
+                events={points}
+                onlyFavs={true}
+                defaultSort="time"
+            />
         </div>
     }
 }
