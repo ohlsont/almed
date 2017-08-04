@@ -41,7 +41,7 @@ export async function getEvents(no: ?number, from: ?string, to: ?string): Promis
   }, {})
   const idsChunks: Array<Array<string>> = makeChunks(ids, 100)
   console.log('getting ids: ', ids.length, idsChunks.length)
-  const res = []
+  const res: Array<AlmedEvent> = []
   for (let i = 0; i<idsChunks.length; i++) {
     const idsChunk = idsChunks[i]
     const eventsChunk = await Promise.all(idsChunk.map((id: string) => {
