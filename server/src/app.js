@@ -1,14 +1,16 @@
 // @flow
 import express from 'express'
+import expressSession from 'express-session'
+import cookieParser from 'cookie-parser'
+
 import compression from 'compression'
 import cors from 'cors'
 import path from 'path'
 import logger from 'morgan'
 import bodyParser from 'body-parser'
-import routes from './routes'
+import passport from 'passport'
 
-const app: any = express()
-app.use(compression())
+import routes from './routes'
 
 const whitelist = [
   'https://ohlsont.github.com/almed',
@@ -26,20 +28,28 @@ const corsOptions = {
     }
   }
 }
-// app.use(cors(corsOptions))
+
+const app: any = express()
+app.use(compression())
 app.use(cors())
 app.disable('x-powered-by')
 
-// View engine setup
-app.set('views', path.join(__dirname, '../views'))
-app.set('view engine', 'pug')
+app.use(cookieParser())
+app.use(bodyParser.json())
+app.use(bodyParser.urlencoded({ extended: true }))
+app.use(express.static(path.join(__dirname, '../public')))
+app.use(expressSession({
+  secret: 'keyboard cat',
+  resave: true,
+  saveUninitialized: true
+}))
+app.use(passport.initialize())
+app.use(passport.session())
 
+// app.use(cors(corsOptions))
 app.use(logger('dev', {
   skip: () => app.get('env') === 'test'
 }))
-app.use(bodyParser.json())
-app.use(bodyParser.urlencoded({ extended: false }))
-app.use(express.static(path.join(__dirname, '../public')))
 
 // Routes
 app.use('/', routes)

@@ -3,6 +3,7 @@ import fetch from 'node-fetch'
 import himalaya from 'himalaya'
 import moment from 'moment'
 
+import { getCollection, add, del, delItem } from './storage'
 import { makeChunks } from './utils'
 
 export type MapPoint = {
@@ -26,25 +27,32 @@ type HTMLTreeChild = {
   children: Array<HTMLTreeChild>,
 }
 
-export async function getEvents(): Promise<Array<AlmedEvent>> {
-  const ids: Array<string> = await getIds()
+export async function getEvents(no: ?number, from: ?string, to: ?string): Promise<Array<AlmedEvent>> {
+  let ids: Array<string> = await getIds()
+  if (no) ids = ids.slice(0, no)
+  if (from && to) {
+    ids = ids.slice(parseInt(from), parseInt(to))
+    console.log(`from ${from}, to ${to}, ids ${ids.length}`)
+  }
   const mapPoints = await getMapPoints()
   const mapMapPoints = mapPoints.result.reduce((acc, mapPoint: MapPoint) => {
     acc[mapPoint.id] = mapPoint
     return acc
   }, {})
-  console.log('getting ids: ', ids.length)
   const idsChunks: Array<Array<string>> = makeChunks(ids, 100)
+  console.log('getting ids: ', ids.length, idsChunks.length)
   const res = []
   for (let i = 0; i<idsChunks.length; i++) {
     const idsChunk = idsChunks[i]
-    const eventsChunk = await Promise.all(idsChunk.map((id: string, index: number) => {
-      console.log('chunkIndex' + i + ' item', index, ' id ', id)
+    const eventsChunk = await Promise.all(idsChunk.map((id: string) => {
+      // console.log('chunkIndex' + i + ' item', index, ' id ', id)
       return getItem(id, mapMapPoints)
     }))
-    await sleep(3000)
+    await sleep(2000)
     res.push(...eventsChunk.filter(Boolean))
+    console.log('going to sleep chunk: ', i, ' of ', idsChunks.length, ' res so far ', res.length)
   }
+  console.log('done getting chunks')
   return res.filter(Boolean)
 }
 
@@ -54,6 +62,7 @@ function sleep(ms) {
 
 type Resp = { result: Array<MapPoint> }
 
+// gets all items with lat lng
 export const getMapPoints = async (): Promise<Resp> => {
   const resp = await fetch('https://almedalsguiden.com/api?version=js', {
     method: 'post',
@@ -90,7 +99,7 @@ export const traverseTree = (
     return tree
   }
   let res
-  const producedResult = (tree.children || []).some(child => {
+  (tree.children || []).some(child => {
     res = traverseTree(child, func)
     return !!res
   })
@@ -146,9 +155,9 @@ export async function getParsedItem(id: string): Promise<Array<any>> {
 
 export const partiesFromParticipants = (parts: AlmedParticipant[]): Array<string> => {
   const partsParties: Array<string> = parts.map((part) => {
-    const f = (substrings: Array<string>, ret): ?string => [part.company, part.title]
+    const f = (substrings: Array<string>, ret): ?string => [(part.company || '').toLowerCase(), (part.title || '').toLowerCase()]
       .some((str) => substrings
-        .some((substr) => str
+        .some((substr) => str && str
           .search(substr) > -1)) ? ret : null
     const partiesStr = [
       f(['\\(s\\)', 'socialdemokraterna'], 's'),
@@ -194,7 +203,7 @@ export async function getItem(href: string, mapMapPoints: {[key: string]: MapPoi
     const filterFuncChildren = (filterFor: string): ?HTMLTreeChild => {
       const item = traverseTree(itemContent, (tree: HTMLTreeChild) => {
         const child = applyChildren(tree, [0, 0])
-        if (!!child && child === filterFor) console.log('traverseTree', filterFor, tree)
+        // if (!!child && child === filterFor) console.log('traverseTree', filterFor, tree)
         return !!child && child === filterFor
       })
       if (!item || !item.children) {
@@ -204,13 +213,10 @@ export async function getItem(href: string, mapMapPoints: {[key: string]: MapPoi
     }
     const filterFunc = (filterFor: string): ?string => {
       const item = filterFuncChildren(filterFor)
-      console.log(filterFor)
-      console.log(item)
       if (!item || !item.children[1]) {
         return null
       }
       const r = (item.children[1] || {}).content
-      console.log('debug', r)
       return r ? removeFirstSpace(r) : null
     }
 
@@ -229,8 +235,8 @@ export async function getItem(href: string, mapMapPoints: {[key: string]: MapPoi
     }
 
     const dd = filterFunc('Dag:')
-    let endDate = null
-    let date = null
+    let endDate: ?moment = null
+    let date: ?moment = null
     if (dd) {
       const d = dd.split('&ndash;')
       date = moment(d[0], 'DD/MM YYYY HH:mm')
@@ -238,8 +244,10 @@ export async function getItem(href: string, mapMapPoints: {[key: string]: MapPoi
         endDate = date.clone()
         const endTimeList = d[1].split(':')
         if (endDate && endTimeList.length > 1) {
-          endDate.hour(endTimeList[0])
-          endDate.minute(endTimeList[1])
+          const h: number = parseInt(endTimeList[0])
+          const m: number = parseInt(endTimeList[1])
+          endDate.hour(h)
+          endDate.minute(m)
         }
       }
     }
@@ -282,4 +290,109 @@ export async function getItem(href: string, mapMapPoints: {[key: string]: MapPoi
       console.error('try get event ', error)
       return null
   }
+}
+
+export const seminarRoutes = (routes: any) => {
+  const dataKey = 'almedEvent'
+  routes.get('/', async (req, res) => {
+    const data = await getCollection(dataKey)
+    if (data) console.log('data length', data.length)
+    res.json(data)
+  })
+
+  routes.get('/map', async (req, res) => {
+    res.json(getMapPoints())
+  })
+
+  routes.get('/ids', async (req, res) => {
+    res.json((await getIds()).sort())
+  })
+
+  routes.get('/debugPureItem/:id', async (req: any, res) => {
+    const id = req.params.id
+    const item = await getParsedItem(id)
+    res.json(item)
+  })
+
+  routes.get('/debugItem/:id', async (req: any, res) => {
+    const id = req.params.id
+    const item = await getParsedItem(id)
+    // recursive parsed data cleaner
+    const ress = traverseTree({ children: item }, (tree2) => !!tree2.attributes && tree2.attributes.id === 'event')
+    res.json(ress)
+  })
+
+  routes.get('/item/:id', async (req: any, res) => {
+    const id = req.params.id
+    const item = await getItem(`/events/${id}`, {})
+    res.json(item)
+  })
+
+  routes.get('/empty', async (req, res) => {
+    await del(dataKey)
+    res.sendStatus(200)
+  })
+
+  routes.get('/migrate', async (req, res) => {
+    const allEvents = await getCollection(dataKey)
+    allEvents.map(event => {
+      if (!Array.isArray(event.subject)) {
+        event.subject = [event.subject]
+      }
+
+      if (!Array.isArray(event.web)) {
+        event.web = [event.web]
+      }
+
+      return event
+    })
+    await add(dataKey, allEvents)
+    res.sendStatus(200)
+  })
+
+
+  routes.get('/update', async (req, res) => {
+    const { from, to } = req.query
+    const allData = await getEvents(null, from, to)
+    console.log('inserting items: ', allData.length)
+    await add(dataKey, allData)
+    res.json({
+      foundItems: allData.length,
+      first: allData.shift(),
+      last: allData.pop(),
+    })
+  })
+
+  routes.get('/updateWithExistingData', async (req, res) => {
+    const allData = await getEvents()
+    console.log('inserting items: ', allData.length)
+    await add(dataKey, allData)
+    res.sendStatus(200)
+  })
+
+  routes.get('/update/:id', async (req, res) => {
+    const id = req.params.id
+    const mapPoints = await getMapPoints()
+    const mapMapPoints = mapPoints.result.reduce((acc, mapPoint: MapPoint) => {
+      acc[mapPoint.id] = mapPoint
+      return acc
+    }, {})
+    const item = await getItem(id, mapMapPoints)
+    if (!item) {
+      res.sendStatus(404)
+      return
+    }
+    await add(dataKey, [item])
+    res.sendStatus(200)
+  })
+
+  routes.get('/delete/:id', async (req, res) => {
+    await delItem(dataKey, req.params.id)
+    res.sendStatus(200)
+  })
+
+  routes.get('/missing', async (req, res) => {
+    const data: Array<AlmedEvent> = await getCollection(dataKey)
+    res.json(data.filter(e => !e.date))
+  })
 }

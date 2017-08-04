@@ -1,5 +1,5 @@
 // @flow
-import { getParsedItem, getItem, traverseTree, partiesFromParticipants } from '../src/almed'
+import { getParsedItem, getItem, traverseTree, partiesFromParticipants, getEvents } from '../src/almed'
 
 // describe('GET /', () => {
 //   it('should render properly', async () => {
@@ -27,34 +27,43 @@ import { getParsedItem, getItem, traverseTree, partiesFromParticipants } from '.
 //   })
 // })
 
-describe('filter parties', () => {
-  it('should return', () => {
-    const participant: AlmedParticipant = {
-      name: 'kalle b',
-      title: 'minister (m)',
-      company: 'moderaterna (m)',
-    }
-    const res = partiesFromParticipants([participant])
-    console.log('debug', res)
-    expect(res !== null)
-    expect(res === 'm')
-  })
-})
+// describe('filter parties', () => {
+//   it('should return', () => {
+//     const participant: AlmedParticipant = {
+//       name: 'Daniel Helldén',
+//       title: 'Trafikborgarråd',
+//       company: '(MP)'
+//     }
+//     const res = partiesFromParticipants([participant])
+//     expect(res).not.toBe(null)
+//     expect(res.pop()).toBe(['mp'].pop())
+//   })
+// })
 
-const testItemId = '6862'
-describe('get item', () => {
-  it('should return', async () => {
-    const items = await getParsedItem(testItemId)
-    const foundItem = traverseTree({ children: items }, (tree2) => !!tree2.attributes && tree2.attributes.id === 'event')
-    expect(foundItem !== null)
-    expect(Array.isArray(foundItem))
-  })
-})
+const testItemId = '7186 '
+// describe('get item', () => {
+//   it('should return', async () => {
+//     const items = await getParsedItem(testItemId)
+//     const foundItem = traverseTree({ children: items }, (tree2) => !!tree2.attributes && tree2.attributes.id === 'event')
+//     expect(foundItem !== null)
+//     expect(Array.isArray(foundItem))
+//   })
+// })
 
-describe('get item', () => {
+describe('get item full', () => {
   it('should return', async () => {
+    expect.assertions(2)
     const foundItem = await getItem(`/events/${testItemId}`, {})
-    expect(foundItem !== null)
-    expect(Array.isArray(foundItem))
+    expect(foundItem).not.toBe(null)
+    expect(foundItem.parties.pop()).toBe(['mp'].pop())
   })
+})
+
+describe('get 100 items', async () => {
+  expect.assertions(1)
+  const from = '3600'
+  const to = '3900'
+  const allData = await getEvents(null, from ,to)
+  expect(allData.length).toBe(parseInt(to) - parseInt(from))
+  console.log('done with test ', allData.length)
 })

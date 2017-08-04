@@ -2,7 +2,8 @@
 import React, { Component } from 'react';
 import {
     FlatButton, AppBar, SelectField, MenuItem, Toggle,
-    Slider, AutoComplete, TimePicker, IconButton,
+    Slider, AutoComplete, TimePicker, IconButton, SvgIcon,
+    CircularProgress,
 } from 'material-ui'
 
 import injectTapEventPlugin from 'react-tap-event-plugin'
@@ -18,27 +19,6 @@ import EventsTable from "./components/eventsTable"
 // Needed for onTouchTap
 // http://stackoverflow.com/a/34015469/988941
 injectTapEventPlugin()
-
-type FacebookLoginData = {
-    profile: {
-        id: string,
-        first_name: string,
-        last_name: string,
-        name: string,
-        email: string,
-        locale: string,
-        gender: string,
-        timezone: number,
-        verified: boolean,
-        link: string,
-    },
-    tokenDetail: {
-        accessToken: string,
-        userID: string,
-        expiresIn: number,
-        signedRequest: string,
-    },
-}
 
 type Appstate = {
     points: Array<AlmedEvent>,
@@ -61,6 +41,12 @@ type Appstate = {
 
     food?: boolean,
 }
+
+const FBIcon = (props) => (
+    <SvgIcon {...props}>
+        <path d="M5,3H19A2,2 0 0,1 21,5V19A2,2 0 0,1 19,21H5A2,2 0 0,1 3,19V5A2,2 0 0,1 5,3M18,5H15.5A3.5,3.5 0 0,0 12,8.5V11H10V14H12V21H15V14H18V11H15V9A1,1 0 0,1 16,8H18V5Z" />
+    </SvgIcon>
+);
 
 function saveToDisk(text: string, name: string = 'favorites.txt', type: string = 'text/plain') {
     var a = document.createElement("a");
@@ -331,12 +317,24 @@ class App extends Component {
         </div>
     }
 
+    handleFacebookLoginResponse(data: FacebookLoginData) {
+        console.log(data, JSON.stringify(data))
+        Favorites.auth(data.tokenDetail.accessToken)
+
+    }
+
     renderFacebookLogin() {
         return <FacebookProvider appId="512783022397010">
             <Login
                 scope="email"
-                onResponse={(data) => console.log(data, JSON.stringify(data))}
+                onResponse={(data) => this.handleFacebookLoginResponse(data)}
                 onError={(error) => console.log('debug', error)}
+                render={({ isLoading, isWorking, onClick }) => isLoading ? <CircularProgress /> : <IconButton
+                    tooltip="Login with facebook to sync favorites"
+                    onClick={onClick}
+                >
+                    <FBIcon color="white" />
+                </IconButton>}
             >
                 <span>Login via Facebook</span>
             </Login>
@@ -443,6 +441,7 @@ class App extends Component {
                 >
                     <Download color="white" />
                 </IconButton>
+                {this.renderFacebookLogin()}
             </div>}
         />
     }

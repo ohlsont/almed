@@ -1,9 +1,9 @@
 // @flow
+import { backendUrl } from '../constants.js'
 
 const eventsKey = 'items'
 const dbVersionKey = 'dbVersion'
 const currentVersion = '3'
-const backendUrl = 'https://almed.herokuapp.com'
 export default class Events {
     static migrateDB() {
         const version: ?string = localStorage.getItem(dbVersionKey)
