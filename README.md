@@ -27,5 +27,5 @@ yarn dev
 
 ## Remote logs
 ``` 
-yarn herukoLogs
+yarn herukoLogs 
 ```
