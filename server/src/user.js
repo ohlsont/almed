@@ -21,13 +21,13 @@ class User {
   }
 
   static async getUserFavorites(fbProfileId: string): Promise<FacebookProfile> {
-    return get(favsKey(fbProfileId))
+    const favs = await get(favsKey(fbProfileId))
+    return favs
   }
 
   static async updateUserFavorites(fbProfileId: string, favs: Array<AlmedEvent>) {
-    const key = userDataKey(fbProfileId)
-    const existingFavs = (await get(key)) || []
-    add(userDataKey(fbProfileId), existingFavs.concat(favs))
+    const key = favsKey(fbProfileId)
+    add(key, favs)
   }
 }
 
@@ -42,7 +42,6 @@ export const userRoutes = (routes: any) => {
       // be associated with a user record in the application's database, which
       // allows for account linking and authentication with other identity
       // providers.
-      console.log('debug', profile)
       return cb(null, profile)
     }))
 
@@ -50,7 +49,6 @@ export const userRoutes = (routes: any) => {
     passport.authenticate('facebook-token'),
     async (req, res) => {
       // do something with req.user
-      console.log('add /auth/facebook/token', res)
       const favs = await User.getUserFavorites(req.user.id)
       res.json(favs || [])
     }
@@ -66,9 +64,24 @@ export const userRoutes = (routes: any) => {
 
   routes.get('/favorites',
     passport.authenticate('facebook-token'),
-    async (req) => {
+    async (req, res) => {
       const user = req.user
-      return await User.getUserFavorites(user.id)
+      res.json(await User.getUserFavorites(user.id))
+    })
+
+  routes.post('/favorites',
+    passport.authenticate('facebook-token'),
+    async (req, res) => {
+      const user = req.user
+      const favs: Array<AlmedEvent> = req.body || []
+      if (!favs.length) {
+        res.status(204)
+        return
+      }
+      console.log('favs received: ', favs.length)
+      await User.updateUserFavorites(user.id, favs)
+      res.json(favs || [])
+      res.status(200)
     })
 }
 

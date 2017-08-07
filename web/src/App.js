@@ -73,6 +73,12 @@ class App extends Component {
         if (!events.length) {
             events = await Events.saveData() || []
         }
+        try {
+            await Favorites.getRemoteFavoritesMerged()
+        } catch(err) {
+            console.warn('could not get remote favs', err)
+        }
+
         this.setState({ points: Events.getPersistentEvents() }, () => this.setup())
     }
 
@@ -317,10 +323,11 @@ class App extends Component {
         </div>
     }
 
-    handleFacebookLoginResponse(data: FacebookLoginData) {
+    async handleFacebookLoginResponse(data: FacebookLoginData) {
         console.log(data, JSON.stringify(data))
-        Favorites.auth(data.tokenDetail.accessToken)
-
+        const token = data.tokenDetail.accessToken
+        localStorage.setItem(Favorites.fbToken, token)
+        await Favorites.auth(token)
     }
 
     renderFacebookLogin() {

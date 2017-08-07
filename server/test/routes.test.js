@@ -1,5 +1,6 @@
 // @flow
-import { getParsedItem, getItem, traverseTree, partiesFromParticipants, getEvents } from '../src/almed'
+import { getEvents, getItem } from '../src/almed'
+// getParsedItem, traverseTree, partiesFromParticipants,
 
 // describe('GET /', () => {
 //   it('should render properly', async () => {
@@ -55,7 +56,9 @@ describe('get item full', () => {
     expect.assertions(2)
     const foundItem = await getItem(`/events/${testItemId}`, {})
     expect(foundItem).not.toBe(null)
-    expect(foundItem.parties.pop()).toBe(['mp'].pop())
+    if (foundItem) {
+      expect(foundItem.parties.pop()).toBe(['mp'].pop())
+    }
   })
 })
 
