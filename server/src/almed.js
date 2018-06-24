@@ -48,7 +48,7 @@ export async function getEvents(no: ?number, from: ?string, to: ?string): Promis
       // console.log('chunkIndex' + i + ' item', index, ' id ', id)
       return getItem(id, mapMapPoints)
     }))
-    await sleep(2000)
+    await sleep(10000)
     res.push(...eventsChunk.filter(Boolean))
     console.log('going to sleep chunk: ', i, ' of ', idsChunks.length, ' res so far ', res.length)
   }
@@ -106,6 +106,10 @@ export const traverseTree = (
   return res
 }
 
+export async function getIdsNumbers(): Promise<Array<string>> {
+  let ids: Array<string> = await getIds()
+  return ids.map(id => id.split('/').pop())
+}
 export async function getIds(): Promise<Array<string>> {
   const url = 'https://almedalsguiden.com/main/search'
   console.log('requesting', url)
@@ -117,8 +121,8 @@ export async function getIds(): Promise<Array<string>> {
     },
     body: 'search=S%C3%B6k&' +
     'freetext=&' +
-    'date_from=2017-07-02&' +
-    'date_to=2017-07-09&' +
+    'date_from=2018-07-01&' +
+    'date_to=2018-07-08&' +
     'subject=&' +
     'event_form=&' +
     'eventType=&' +
@@ -142,7 +146,7 @@ export async function getIds(): Promise<Array<string>> {
   const res = await resp.text()
   const json = himalaya.parse(res)
 
-  const elements = applyChildren(json[2], [3,5,5,1,3], false).children
+  const elements = applyChildren(json[2], [3,5,5,3,1], false).children
   return [...new Set(elements.map(elem => elem.attributes ? elem.attributes.href : null).filter(Boolean))]
 }
 
@@ -395,4 +399,37 @@ export const seminarRoutes = (routes: any) => {
     const data: Array<AlmedEvent> = await getCollection(dataKey)
     res.json(data.filter(e => !e.date))
   })
+
+  routes.get('/missingItems', async (req, res) => {
+    const data: Array<AlmedEvent> = await getCollection(dataKey)
+    const ids: Array<string> = await getIdsNumbers()
+    const missingIds: Array<string> = ids.filter(id => !data.some(d => d.id === id))
+    console.log('missing items: ', missingIds.length)
+    res.json(missingIds)
+  })
+
+    routes.get('/updateMissing', async (req, res) => {
+    const data: Array<AlmedEvent> = await getCollection(dataKey)
+    const ids: Array<string> = await getIdsNumbers()
+    const missingIds: Array<string> = ids.filter(id => !data.some(d => d.id === id))
+
+    const mapPoints = await getMapPoints()
+    const mapMapPoints = mapPoints.result.reduce((acc, mapPoint: MapPoint) => {
+      acc[mapPoint.id] = mapPoint
+      return acc
+    }, {})
+
+    for (let i = 0; i<missingIds.length; i++) {
+      const missingId = missingIds[i]
+      const item = await getItem(missingId, mapMapPoints)
+      if (!item) {
+        return
+      }
+      await add(dataKey, [item])
+      console.log('sleeping after got item', missingId)
+      await sleep(2000)
+    }
+    res.json(missingIds)
+  })
+
 }
