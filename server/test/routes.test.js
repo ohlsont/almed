@@ -41,7 +41,7 @@ import { getEvents, getItem } from '../src/almed'
 //   })
 // })
 
-const testItemId = '7186 '
+const testItemId = '10008'
 // describe('get item', () => {
 //   it('should return', async () => {
 //     const items = await getParsedItem(testItemId)
@@ -56,6 +56,7 @@ describe('get item full', () => {
     expect.assertions(2)
     const foundItem = await getItem(`/events/${testItemId}`, {})
     expect(foundItem).not.toBe(null)
+
     if (foundItem) {
       expect(foundItem.parties.pop()).toBe(['mp'].pop())
     }
