@@ -297,7 +297,8 @@ export async function getItem(href: string, mapMapPoints: {[key: string]: MapPoi
 }
 
 export const seminarRoutes = (routes: any) => {
-  const dataKey = 'almedEvent'
+  let year = new Date().getFullYear()
+  const dataKey = 'almedEvent' + year
   routes.get('/', async (req, res) => {
     const data = await getCollection(dataKey)
     if (data) console.log('data length', data.length)
@@ -408,7 +409,7 @@ export const seminarRoutes = (routes: any) => {
     res.json(missingIds)
   })
 
-    routes.get('/updateMissing', async (req, res) => {
+  routes.get('/updateMissing', async (req, res) => {
     const data: Array<AlmedEvent> = await getCollection(dataKey)
     const ids: Array<string> = await getIdsNumbers()
     const missingIds: Array<string> = ids.filter(id => !data.some(d => d.id === id))
@@ -431,5 +432,4 @@ export const seminarRoutes = (routes: any) => {
     }
     res.json(missingIds)
   })
-
 }

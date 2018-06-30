@@ -16,11 +16,8 @@
   "scripts": {
     "prestart": "npm run -s build",
     "flowc": "node_modules/.bin/flow check",
-    "remote": "gcloud app browse",
     "start": "node dist/index.js",
     "dev": "nodemon src/index.js --exec \"node -r dotenv/config -r babel-register\"",
-    "devLogin": "gcloud auth application-default login",
-    "deploy": "gcloud app deploy app.yaml --version=`echo $(date +%Y%m%dt%H%M%S)-$(git rev-parse HEAD | cut -c1-7)`",
     "herokuLogs": "heroku logs -a almed --tail",
     "clean": "rimraf dist",
     "build": "npm run clean && mkdir -p dist && babel src -s -D -d dist",
@@ -132,7 +129,7 @@
     }
   },
   "jest": {
-    "testEnvironment": "node"
+
   },
   "bugs": {
     "url": "https://github.com/vmasto/express-babel/issues"
