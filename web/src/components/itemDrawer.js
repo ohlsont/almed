@@ -25,6 +25,7 @@ export class EventItem extends React.Component {
         const favs = Favorites.all()
         const favExists = favs.some(fav => fav.id === item.id)
         const latLng = `${item.latitude},${item.longitude}`
+        const mapLink = `https://maps.googleapis.com/maps/api/staticmap?autoscale=1&size=600x300&maptype=roadmap&key=AIzaSyBvSn16OLEEz0T4eJGSdGIao5Nr5fO5cWg&format=png&visual_refresh=true&markers=size:mid%7Ccolor:0xff0000%7Clabel:${item.locationDescription}%7C${latLng}`
         return <div
             style={{ padding: '1em' }}
         >
@@ -67,16 +68,18 @@ export class EventItem extends React.Component {
             <p>Ämne: {item.subject}</p>
             <p>Typ: {item.type}</p>
             <br />
-            <a href={item.web}>{item.web}</a>
+            <a target={'_blank'} href={item.web}>{item.web}</a>
             <br />
             <br />
             <a
+                target={'_blank'}
                 href={`https://www.google.com/maps/place/${latLng}/`}
             >
                 <img
-                    src={`https://maps.googleapis.com/maps/api/staticmap?autoscale=1&size=600x300&maptype=roadmap&format=png&visual_refresh=true&markers=size:mid%7Ccolor:0xff0000%7Clabel:${item.locationDescription}%7C${latLng}`}
+                    src={mapLink}
                     alt={`Google Map of ${latLng}`}
-                /></a>
+                />
+            </a>
         </div>
     }
 }

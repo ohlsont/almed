@@ -10,6 +10,7 @@ import moment from 'moment'
 
 import { EventModal } from './'
 import { Favorites } from '../services'
+import { isMobile } from '../constants'
 
 type SortTypes = 'time' | 'name' | 'org' | 'title'
 
@@ -124,9 +125,9 @@ export default class EventsTable extends React.Component {
                             })
                         }}
                     >
-                        <TableHeaderColumn
+                        {!isMobile && <TableHeaderColumn
                             style={{ width: 20 }}
-                        >Favorite</TableHeaderColumn>
+                        >Favorite</TableHeaderColumn>}
                         <TableHeaderColumn>Title</TableHeaderColumn>
                         <TableHeaderColumn>Time</TableHeaderColumn>
                         <TableHeaderColumn>Organiser</TableHeaderColumn>
@@ -150,7 +151,7 @@ export default class EventsTable extends React.Component {
                                 })
                             }}
                         >
-                            <TableRowColumn
+                            {!isMobile && <TableRowColumn
                                 style={{ width: smallRowWidth }}
                             >
                                 <IconButton
@@ -162,7 +163,7 @@ export default class EventsTable extends React.Component {
                                 >
                                     <Star />
                                 </IconButton>
-                            </TableRowColumn>
+                            </TableRowColumn>}
                             <TableRowColumn>
                                 {event.title}
                             </TableRowColumn>

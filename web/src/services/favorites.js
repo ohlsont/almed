@@ -85,7 +85,10 @@ export default class Favorites {
     static async getRemoteFavoritesMerged(): Promise<Array<AlmedEvent>> {
         const localSems = getFavs()
         const seminars = await Favorites.getRemoteFavorites()
-        const mergedFavs = dedupeByKey(seminars.concat(localSems), 'id')
+        if (!seminars.length) {
+            throw new Error(`bad resp from server ${JSON.stringify(seminars)}`)
+        }
+        const mergedFavs = dedupeByKey((seminars || []).concat(localSems), 'id')
         saveFavs(mergedFavs)
         return mergedFavs
     }

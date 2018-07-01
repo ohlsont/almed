@@ -4,8 +4,8 @@
   "private": true,
   "homepage": "https://ohlsont.github.io/almed",
   "dependencies": {
-    "mapbox-gl": "^0.38.0",
-    "material-ui": "^0.18.3",
+    "mapbox-gl": "^0.39.1",
+    "material-ui": "^0.18.7",
     "moment": "^2.18.1",
     "react": "^15.5.4",
     "react-big-calendar": "^0.14.4",
@@ -15,10 +15,9 @@
     "react-tap-event-plugin": "^2.0.1"
   },
   "devDependencies": {
-    "eslint": "^3.19.0",
-    "flow-bin": "^0.48.0",
+    "flow-bin": "^0.52.0",
     "gh-pages": "^1.0.0",
-    "react-scripts": "1.0.7"
+    "react-scripts": "^1.0.10"
   },
   "scripts": {
     "flow": "flow",

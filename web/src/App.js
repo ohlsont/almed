@@ -4,6 +4,7 @@ import {
     FlatButton, AppBar, SelectField, MenuItem, Toggle,
     Slider, AutoComplete, TimePicker, IconButton, SvgIcon,
     CircularProgress,
+    Card, CardText, CardHeader,
 } from 'material-ui'
 
 import injectTapEventPlugin from 'react-tap-event-plugin'
@@ -15,6 +16,7 @@ import RefreshIcon from 'material-ui/svg-icons/navigation/refresh'
 import { EventsModal, ParticipantModal, CalendarModal, AlmedDrawer, Map } from './components'
 import { Events, Favorites } from './services'
 import EventsTable from "./components/eventsTable"
+import { isMobile } from './constants'
 
 // Needed for onTouchTap
 // http://stackoverflow.com/a/34015469/988941
@@ -409,59 +411,77 @@ class App extends Component {
             <div>Seminars showing {filteredPoints.length}</div>
             {this.renderDaySelector()}
             {this.renderToggles()}
+            <FlatButton
+                label={'Update'}
+                onClick={() => this.downloadSaveData()}
+            />
+            <Map points={Favorites.all()} modal={true} button={true} />,
             <ParticipantModal participantsMap={participantsMap}/>
             <EventsModal events={filteredPoints}/>
             <CalendarModal events={filteredPoints}/>
             <FlatButton
-                label={'Download'}
-                onClick={() => this.downloadSaveData()}
-            />
-            <FlatButton
-                label={'Update backend'}
-                onClick={() => Events.updateData()}
-            />
-            <FlatButton
-                label={'Export'}
+                label={'Download as file'}
                 onClick={() => saveToDisk(JSON.stringify(Favorites.all()))}
             />
             {this.renderFacebookLogin()}
         </div>
+
+        const barContent = [
+            this.renderToggles(),
+            <div style={{ width: '2em' }}></div>,
+            <IconButton
+                onClick={() => this.downloadSaveData()}
+                tooltip="Update events from server"
+            >
+                <RefreshIcon color="white" />
+                </IconButton>,
+            <Map points={Favorites.all()} modal={true} />,
+            <ParticipantModal participantsMap={participantsMap} iconButton={true} />,
+            <EventsModal events={filteredPoints} iconButton={true} />,
+            <CalendarModal events={filteredPoints} iconButton={true} />,
+            <IconButton
+                tooltip="Download favorites as file"
+                onClick={() => saveToDisk(JSON.stringify(Favorites.all()))}
+            >
+                <Download color="white" />
+            </IconButton>,
+            this.renderFacebookLogin(),
+        ]
+
         return <AppBar
             title={`Almedalen with ${points.length} seminars`}
             iconElementLeft={<AlmedDrawer content={content} />}
             iconElementRight={<div style={{ display: 'flex' }}>
-                {this.renderToggles()}
-                <div style={{ width: '2em' }}></div>
-                <IconButton
-                    onClick={() => this.downloadSaveData()}
-                    tooltip="Update events from server"
-                >
-                    <RefreshIcon color="white" />
-                </IconButton>
-                <Map points={Favorites.all()} modal={true} />
-                <ParticipantModal participantsMap={participantsMap} iconButton={true} />
-                <EventsModal events={filteredPoints} iconButton={true} />
-                <CalendarModal events={filteredPoints} iconButton={true} />
-                <IconButton
-                    tooltip="Download favorites as file"
-                    onClick={() => saveToDisk(JSON.stringify(Favorites.all()))}
-                >
-                    <Download color="white" />
-                </IconButton>
-                {this.renderFacebookLogin()}
+                {!isMobile && barContent}
             </div>}
         />
     }
 
     render() {
         const { points, filteredPoints } = this.state
-        return <div className="App">
+        const futurePoints = points.filter(sem => moment(sem.date).isAfter(moment()))
+        const pastPoints = points.filter(sem => moment(sem.date).isBefore(moment()))
+        return <div>
             {this.renderAppBar(filteredPoints)}
             <EventsTable
-                events={points}
+                events={futurePoints}
                 onlyFavs={true}
                 defaultSort="time"
             />
+            <Card>
+                <CardHeader
+                    title="Past events"
+                    actAsExpander={true}
+                    showExpandableButton={true}
+                />
+                <CardText expandable={true}>
+                    <EventsTable
+                        events={pastPoints}
+                        onlyFavs={true}
+                        defaultSort="time"
+                    />
+                </CardText>
+            </Card>
         </div>
     }
 }

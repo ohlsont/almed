@@ -22,6 +22,7 @@ export default class EventsModal extends React.Component {
         onlyFavs: false,
         orgFilterText: '',
         descFilterText: '',
+        partFilterText: '',
     }
 
     handleOpen = () => {
@@ -48,7 +49,7 @@ export default class EventsModal extends React.Component {
 
     render() {
         const { events, buttonStyle, withOutButton, iconButton } = this.props
-        const { open, titleFilterText, descFilterText, currentLimit,
+        const { open, titleFilterText, descFilterText, partFilterText, currentLimit,
             orgFilterText, foodFilter, onlyFavs } = this.state
         const actions = [
             <FlatButton
@@ -69,9 +70,29 @@ export default class EventsModal extends React.Component {
                 return filterText.toLowerCase() !== '' && event[prop].toLowerCase().indexOf(filterText) !== -1
             })
         }
+
+        const filterParticipants = (filterText: string) => {
+            if (!filterText) {
+                return
+            }
+            sortedEvents = sortedEvents.filter((event: AlmedEvent) => {
+                if (!event.participants.length) {
+                    return false
+                }
+                return filterText.toLowerCase() !== '' && event.participants
+                    .some((part: AlmedParticipant) => {
+                        return (part.name && part.name.toLowerCase().indexOf(filterText) !== -1) ||
+                            (part.company && part.company.toLowerCase().indexOf(filterText) !== -1) ||
+                            (part.title && part.title.toLowerCase().indexOf(filterText) !== -1)
+                    })
+            })
+        }
+
+
         filter('title', titleFilterText)
         filter('organiser', orgFilterText)
         filter('description', descFilterText)
+        filterParticipants(partFilterText)
 
         if (foodFilter) {
             sortedEvents = sortedEvents.filter(event => event.food)
@@ -114,6 +135,10 @@ export default class EventsModal extends React.Component {
                         <TextField
                             hintText="Filter description"
                             onChange={(e, text) => this.setState({ descFilterText: text })}
+                        />
+                        <TextField
+                            hintText="Filter participant"
+                            onChange={(e, text) => this.setState({ partFilterText: text })}
                         />
                         <Toggle
                             style={{ width: 20 }}
