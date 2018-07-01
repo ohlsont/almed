@@ -4,6 +4,7 @@ import { backendUrl } from '../constants.js'
 const eventsKey = 'items'
 const dbVersionKey = 'dbVersion'
 const currentVersion = '3'
+
 export default class Events {
     static migrateDB() {
         const version: ?string = localStorage.getItem(dbVersionKey)
@@ -48,7 +49,13 @@ export default class Events {
             // 'https://almed-171122.appspot.com/',
         )
         console.log('items gotten from server', allData)
-        localStorage.setItem('items', JSON.stringify(allData))
+
+        for(let i = 0;i<100;i++) {
+            const s = allData.slice(i * 100,(i+1) * 100)
+            console.log('debug ', s.length)
+            localStorage.setItem(eventsKey + '-' + i, JSON.stringify(s))
+        }
+
         return allData
     }
 
@@ -57,12 +64,17 @@ export default class Events {
     }
 
     static getPersistentEvents(): Array<AlmedEvent> {
-        const items = localStorage.getItem(eventsKey)
-        if (!items || items === 'undefined') {
-            console.warn('no events')
-            return []
+        let events: Array<AlmedEvent> = []
+        for(let i = 0;i<100;i++) {
+            const items = localStorage.getItem(eventsKey + '-' + i)
+            if (!items || items === 'undefined') {
+                console.warn('no events')
+                return []
+            }
+            const evs: Array<AlmedEvent> = JSON.parse(items)
+            events = events.concat(evs)
         }
-        const events: Array<AlmedEvent> = JSON.parse(items)
+        console.log('got events ', events.length)
         return events
     }
 
