@@ -3,7 +3,7 @@ import fetch from 'node-fetch'
 import himalaya from 'himalaya'
 import moment from 'moment'
 
-import { getCollection, add, del, delItem } from './storage'
+import { add, del, delItem, writeToFile, readFiles, getRedisPipeline, addEvents, collectionKey } from './storage'
 import { makeChunks } from './utils'
 
 export type MapPoint = {
@@ -48,7 +48,7 @@ export async function getEvents(no: ?number, from: ?string, to: ?string): Promis
       // console.log('chunkIndex' + i + ' item', index, ' id ', id)
       return getItem(id, mapMapPoints)
     }))
-    await sleep(10000)
+    await sleep(10)
     res.push(...eventsChunk.filter(Boolean))
     console.log('going to sleep chunk: ', i, ' of ', idsChunks.length, ' res so far ', res.length)
   }
@@ -296,11 +296,13 @@ export async function getItem(href: string, mapMapPoints: {[key: string]: MapPoi
   }
 }
 
+export function getEventsCollection(): Promise<Array<AlmedEvent>> {
+  return getRedisPipeline(collectionKey + ':*')
+}
+
 export const seminarRoutes = (routes: any) => {
-  let year = new Date().getFullYear()
-  const dataKey = 'almedEvent' + year
   routes.get('/', async (req, res) => {
-    const data = await getCollection(dataKey)
+    const data = await getEventsCollection()
     if (data) console.log('data length', data.length)
     res.json(data)
   })
@@ -334,12 +336,12 @@ export const seminarRoutes = (routes: any) => {
   })
 
   routes.get('/empty', async (req, res) => {
-    await del(dataKey)
+    await del(collectionKey + ':*')
     res.sendStatus(200)
   })
 
   routes.get('/migrate', async (req, res) => {
-    const allEvents = await getCollection(dataKey)
+    const allEvents = await getEventsCollection()
     allEvents.map(event => {
       if (!Array.isArray(event.subject)) {
         event.subject = [event.subject]
@@ -351,7 +353,7 @@ export const seminarRoutes = (routes: any) => {
 
       return event
     })
-    await add(dataKey, allEvents)
+    await addEvents(allEvents)
     res.sendStatus(200)
   })
 
@@ -360,7 +362,7 @@ export const seminarRoutes = (routes: any) => {
     const { from, to } = req.query
     const allData = await getEvents(null, from, to)
     console.log('inserting items: ', allData.length)
-    await add(dataKey, allData)
+    await addEvents(allData)
     res.json({
       foundItems: allData.length,
       first: allData.shift(),
@@ -371,7 +373,7 @@ export const seminarRoutes = (routes: any) => {
   routes.get('/updateWithExistingData', async (req, res) => {
     const allData = await getEvents()
     console.log('inserting items: ', allData.length)
-    await add(dataKey, allData)
+    await addEvents(allData)
     res.sendStatus(200)
   })
 
@@ -387,22 +389,22 @@ export const seminarRoutes = (routes: any) => {
       res.sendStatus(404)
       return
     }
-    await add(dataKey, [item])
+    await addEvents([item])
     res.sendStatus(200)
   })
 
   routes.get('/delete/:id', async (req, res) => {
-    await delItem(dataKey, req.params.id)
+    await delItem(req.params.id)
     res.sendStatus(200)
   })
 
   routes.get('/missing', async (req, res) => {
-    const data: Array<AlmedEvent> = await getCollection(dataKey)
+    const data: Array<AlmedEvent> = await getEventsCollection()
     res.json(data.filter(e => !e.date))
   })
 
   routes.get('/missingItems', async (req, res) => {
-    const data: Array<AlmedEvent> = await getCollection(dataKey)
+    const data: Array<AlmedEvent> = await getEventsCollection()
     const ids: Array<string> = await getIdsNumbers()
     const missingIds: Array<string> = ids.filter(id => !data.some(d => d.id === id))
     console.log('missing items: ', missingIds.length)
@@ -410,7 +412,7 @@ export const seminarRoutes = (routes: any) => {
   })
 
   routes.get('/updateMissing', async (req, res) => {
-    const data: Array<AlmedEvent> = await getCollection(dataKey)
+    const data: Array<AlmedEvent> = await getEventsCollection()
     const ids: Array<string> = await getIdsNumbers()
     const missingIds: Array<string> = ids.filter(id => !data.some(d => d.id === id))
 
@@ -420,16 +422,52 @@ export const seminarRoutes = (routes: any) => {
       return acc
     }, {})
 
+    let items = []
     for (let i = 0; i<missingIds.length; i++) {
       const missingId = missingIds[i]
       const item = await getItem(missingId, mapMapPoints)
       if (!item) {
         return
       }
-      await add(dataKey, [item])
       console.log('sleeping after got item', missingId)
-      await sleep(2000)
+      items.push(item)
+      await sleep(200)
     }
+    await addEvents(items)
     res.json(missingIds)
+  })
+
+  const idsFileName = 'ids'
+  const splitter = 1000
+  routes.get('/saveEventsToFile', async (req, res) => {
+    let ids: Array<string> = await getIds()
+    await writeToFile(idsFileName, ids)
+    // const ids: Array<string> = await readFiles(idsFileName)
+    for(let i = 0;i<Math.floor(ids.length/splitter) - 1; i++) {
+      console.log('loop')
+      const from = i * splitter
+      const to = (i+1) * splitter
+      const events: Array<Object> = await readFiles(i + '')
+      const notExactDuplicate = events.some((ev: AlmedEvent) => ids.some((id: string) => id === '/event/' + ev.id))
+      if (notExactDuplicate) {
+        console.log('notExactDuplicate')
+        continue
+      }
+      const obj = await getEvents(null, from + '', to + '')
+      writeToFile(i + '', obj)
+    }
+    const allData = [0,0,0]
+    res.json({
+      idsLength: ids.length,
+      foundItems: allData.length,
+      first: allData.shift(),
+      last: allData.pop(),
+    })
+  })
+
+  routes.get('/saveEventsToOneFile', async (req, res) => {
+    const ids: Array<string> = await readFiles(idsFileName)
+    const obj = await getEvents(null, null, null)
+    writeToFile('all', obj)
   })
 }

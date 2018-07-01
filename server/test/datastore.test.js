@@ -1,5 +1,6 @@
 // @flow
-import { add, del, get } from '../src/storage'
+import {add, del, get, getRedisPipeline, addRedisPipeline, addEvents} from '../src/storage'
+import {getEventsCollection} from "../src/almed";
 
 describe('set get item from storage', () => {
   it('should return', async () => {
@@ -29,5 +30,16 @@ describe('add 202 items to storage', () => {
     await del(testKey)
     const readItem2 = await get(testKey)
     expect(readItem2 === null)
+  })
+})
+
+describe('test horizontal get', () => {
+  it('should return', async () => {
+    await addEvents([{ id: 'bepa'},{ id: 'bep'}])
+    const data = await getEventsCollection()
+    if (data) {
+      expect(data.length === 2)
+    }
+    expect(data !== null)
   })
 })
