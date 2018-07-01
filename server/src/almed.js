@@ -363,6 +363,7 @@ export const seminarRoutes = (routes: any) => {
     const allData = await getEvents(null, from, to)
     console.log('inserting items: ', allData.length)
     await addEvents(allData)
+    console.log('did insert ', allData.length)
     res.json({
       foundItems: allData.length,
       first: allData.shift(),

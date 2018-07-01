@@ -88,7 +88,7 @@ const ItemDrawer = (props: { item: ?AlmedEvent }) => <Drawer
     openSecondary={true}
     open={!!props.item}
 >
-    !!props.item && <EventItem item={props.item} />
+    {!!props.item && <EventItem item={props.item} />}
 </Drawer>
 
 export default ItemDrawer
