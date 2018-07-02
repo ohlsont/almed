@@ -49,7 +49,8 @@ export default class Events {
             // 'https://almed-171122.appspot.com/',
         )
         console.log('items gotten from server', allData)
-
+        allData.forEach(ev => ev.date = (ev.date || '').replace('+00:00','+02:00'))
+        allData.forEach(ev => ev.endDate = (ev.endDate || '').replace('+00:00','+02:00'))
         for(let i = 0;i<100;i++) {
             const s = allData.slice(i * 100,(i+1) * 100)
             console.log('debug ', s.length)

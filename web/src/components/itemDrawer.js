@@ -45,6 +45,7 @@ export class EventItem extends React.Component {
             </IconButton>
             {!noTitle && <h3>{item.title}</h3>}
             <p>{item.organiser}</p>
+            <p>{item.date} {item.endDate}</p>
             <i>{moment(item.date).format('HH:mm dddd DD/MM')} - {moment(item.endDate).format('HH:mm')}</i>
             <p>{item.description}</p>
 
@@ -69,6 +70,8 @@ export class EventItem extends React.Component {
             <p>Typ: {item.type}</p>
             <br />
             <a target={'_blank'} href={item.web}>{item.web}</a>
+            <br />
+            <a target={'_blank'} href={item.url}>{item.url}</a>
             <br />
             <br />
             <a
