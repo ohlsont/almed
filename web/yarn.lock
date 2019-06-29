@@ -2455,7 +2455,7 @@ eslint-plugin-react@7.1.0:
     has "^1.0.1"
     jsx-ast-utils "^1.4.1"
 
-eslint@3.19.0, eslint@^3.19.0:
+eslint@3.19.0:
   version "3.19.0"
   resolved "https://registry.yarnpkg.com/eslint/-/eslint-3.19.0.tgz#c8fc6201c7f40dd08941b87c085767386a679acc"
   dependencies:
@@ -4298,6 +4298,11 @@ lru-cache@^4.0.1:
   dependencies:
     pseudomap "^1.0.1"
     yallist "^2.0.0"
+
+lz-string@^1.4.4:
+  version "1.4.4"
+  resolved "https://registry.yarnpkg.com/lz-string/-/lz-string-1.4.4.tgz#c0d8eaf36059f705796e1e344811cf4c498d3a26"
+  integrity sha1-wNjq82BZ9wV5bh40SBHPTEmNOiY=
 
 macaddress@^0.2.8:
   version "0.2.8"

@@ -1,5 +1,6 @@
 // @flow
 import { backendUrl } from '../constants.js'
+import LZString from 'lz-string'
 
 const eventsKey = 'items'
 const dbVersionKey = 'dbVersion'
@@ -54,7 +55,7 @@ export default class Events {
         for(let i = 0;i<100;i++) {
             const s = allData.slice(i * 100,(i+1) * 100)
             console.log('debug ', s.length)
-            localStorage.setItem(eventsKey + '-' + i, JSON.stringify(s))
+            localStorage.setItem(eventsKey + '-' + i, LZString.compress(JSON.stringify(s)))
         }
 
         return allData
@@ -72,7 +73,7 @@ export default class Events {
                 console.warn('no events')
                 return []
             }
-            const evs: Array<AlmedEvent> = JSON.parse(items)
+            const evs: Array<AlmedEvent> = JSON.parse(LZString.decompress(items))
             events = events.concat(evs)
         }
         console.log('got events ', events.length)

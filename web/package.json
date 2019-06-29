@@ -4,6 +4,7 @@
   "private": true,
   "homepage": "https://ohlsont.github.io/almed",
   "dependencies": {
+    "lz-string": "^1.4.4",
     "mapbox-gl": "^0.39.1",
     "material-ui": "^0.18.7",
     "moment": "^2.18.1",
