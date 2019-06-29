@@ -2,6 +2,7 @@
 import fetch from 'node-fetch'
 import himalaya from 'himalaya'
 import moment from 'moment'
+import fs from 'fs'
 
 import { add, del, delItem, writeToFile, readFiles, getRedisPipeline, addEvents, collectionKey } from './storage'
 import { makeChunks } from './utils'
@@ -110,10 +111,12 @@ export async function getIdsNumbers(): Promise<Array<string>> {
   let ids: Array<string> = await getIds()
   return ids.map(id => id.split('/').pop())
 }
-export async function getIds(): Promise<Array<string>> {
+export async function getIdsHtlmJson(): Promise<string> {
   const url = 'https://almedalsguiden.com/main/search'
   console.log('requesting', url)
-  const resp = await fetch(url, {
+  const d = new Date()
+  const year = d.getFullYear()
+  const req = {
     method: 'post',
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded',
@@ -121,8 +124,8 @@ export async function getIds(): Promise<Array<string>> {
     },
     body: 'search=S%C3%B6k&' +
     'freetext=&' +
-    'date_from=2018-07-01&' +
-    'date_to=2018-07-08&' +
+    'date_from=' + year + '-06-20&' +
+    'date_to=' + year + '-07-20&' +
     'subject=&' +
     'event_form=&' +
     'eventType=&' +
@@ -132,8 +135,9 @@ export async function getIds(): Promise<Array<string>> {
     'language=&' +
     'status=&' +
     'accessibility=',
-  })
-  console.log('got response', url)
+  }
+  const resp = await fetch(url, req)
+  console.log('got response', url, req)
 
   switch (resp.status) {
     case 204:
@@ -144,8 +148,11 @@ export async function getIds(): Promise<Array<string>> {
       break
   }
   const res = await resp.text()
-  const json = himalaya.parse(res)
+  return himalaya.parse(res)
+}
 
+export async function getIds(): Promise<Array<string>> {
+  const json = await getIdsHtlmJson()
   const elements = applyChildren(json[2], [3,5,5,3,1], false).children
   return [...new Set(elements.map(elem => elem.attributes ? elem.attributes.href : null).filter(Boolean))]
 }
@@ -313,6 +320,16 @@ export const seminarRoutes = (routes: any) => {
 
   routes.get('/ids', async (req, res) => {
     res.json((await getIds()).sort())
+  })
+
+  routes.get('/ids_test', async (req, res) => {
+    fs.readFile(__dirname + '/../test/search.html', 'utf8', function(err, html){
+      const json = himalaya.parse(html)
+
+      const elements = applyChildren(json[3], [3,5,5,3,1], false).children
+      const jsonResult = [...new Set(elements.map(elem => elem.attributes ? elem.attributes.href : null).filter(Boolean))]
+      res.json(jsonResult)
+    })
   })
 
   routes.get('/debugPureItem/:id', async (req: any, res) => {
