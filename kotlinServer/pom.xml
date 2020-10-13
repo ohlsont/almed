@@ -78,7 +78,7 @@ limitations under the License.
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
-            <version>LATEST</version>
+            <version>4.13.1</version>
             <type>pom</type>
         </dependency>
 
