@@ -1,6 +1,8 @@
-# Deployment
+Deployment
+==========
 
 This is a small walkthrough on publishing your app in some popular PaaS providers.
+
 ### Heroku
 
 Log in to [Heroku](https://heroku.com) or create a new account if you don't have one.

@@ -1,6 +1,7 @@
 package event
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -10,11 +11,13 @@ import (
 	"strings"
 )
 
-func GetMapPoints() (map[int]MapPoint, error) {
+func (client *AlmedClient) GetMapPoints(ctx context.Context) (map[int]MapPoint, error) {
 	body := url.Values{
 		"search_place": []string{"a"},
 	}
-	req, err := http.NewRequest("POST", "https://almedalsguiden.com/api?version=js", strings.NewReader(body.Encode()))
+	req, err := http.NewRequestWithContext(
+		ctx,
+		"POST", client.BaseURL+"/api?version=js", strings.NewReader(body.Encode()))
 	if err != nil {
 		return nil, fmt.Errorf("get map points: %w", err)
 	}
@@ -36,7 +39,7 @@ func GetMapPoints() (map[int]MapPoint, error) {
 	}
 	points := map[int]MapPoint{}
 	for _, p := range res.Result {
-		id, err := strconv.Atoi(p.Id)
+		id, err := strconv.Atoi(p.ID)
 		if err != nil {
 			return nil, fmt.Errorf("get map points: %w", err)
 		}
@@ -49,7 +52,7 @@ func GetMapPoints() (map[int]MapPoint, error) {
 			return nil, fmt.Errorf("get map points: %w", err)
 		}
 		points[id] = MapPoint{
-			Id:               id,
+			ID:               id,
 			Place:            p.Place,
 			PlaceDescription: p.PlaceDescription,
 			Longitude:        lng,
@@ -65,7 +68,7 @@ type Result struct {
 }
 
 type MapPointInternal struct {
-	Id               string `json:"id"`
+	ID               string `json:"id"`
 	Place            string `json:"PLACE"`
 	PlaceDescription string `json:"PLACE_DESCRIPTION"`
 	Longitude        string `json:"LONGITUDE"`
@@ -73,7 +76,7 @@ type MapPointInternal struct {
 }
 
 type MapPoint struct {
-	Id               int     `json:"id"`
+	ID               int     `json:"id"`
 	Place            string  `json:"place"`
 	PlaceDescription string  `json:"place_description"`
 	Longitude        float64 `json:"longitude"`
