@@ -14,7 +14,7 @@ import (
 	"github.com/PuerkitoBio/goquery"
 )
 
-func (client *AlmedClient) GetIdsHTMLJSON(ctx context.Context) ([]int, error) {
+func (client *AlmedClient) GetEventIds(ctx context.Context) ([]int, error) {
 	body := url.Values{
 		"search":        []string{"S%C3%B6k"},
 		"date_from":     []string{"2022-07-03"},
@@ -146,7 +146,7 @@ func (client *AlmedClient) GetEvent(ctx context.Context, id int) (*AlmedEvent, e
 					selection.Text() == participantsFieldType {
 					return
 				}
-				log.Println(i, " unhandled type: "+selection.Find("strong").Text())
+				//log.Println(i, " unhandled type: ", selection.Text())
 			}
 		})
 		web, err := selection.Find("section p a").Html()
