@@ -12,21 +12,28 @@ import (
 	"gotest.tools/v3/assert"
 )
 
-func TestGetHTMLItem(t *testing.T) {
-	log.SetFlags(log.LstdFlags | log.Lshortfile)
-	data, err := os.ReadFile("event.html")
-	assert.NilError(t, err)
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if _, err := w.Write(data); err != nil {
-			log.Println("test", err)
-			return
-		}
-	}))
-	defer ts.Close()
-	client := AlmedClient{BaseURL: ts.URL}
-	res, err := client.GetEvent(context.Background(), 20314)
-	assert.NilError(t, err)
-	fmt.Println(res)
+func TestGetEvents(t *testing.T) {
+	for i, h := range []string{
+		"event.html",
+		"event2.html",
+	} {
+		t.Run(fmt.Sprintf("test-%d", i), func(t *testing.T) {
+			log.SetFlags(log.LstdFlags | log.Lshortfile)
+			data, err := os.ReadFile(h)
+			assert.NilError(t, err)
+			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if _, err := w.Write(data); err != nil {
+					log.Println("test", err)
+					return
+				}
+			}))
+			defer ts.Close()
+			client := AlmedClient{BaseURL: ts.URL}
+			res, err := client.GetEvent(context.Background(), 1)
+			assert.NilError(t, err)
+			fmt.Println(res)
+		})
+	}
 }
 
 func TestParticipants(t *testing.T) {
