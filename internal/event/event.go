@@ -1,18 +1,20 @@
 package event
 
 import (
+	"context"
 	"errors"
 	"fmt"
-	"github.com/PuerkitoBio/goquery"
 	"log"
 	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/PuerkitoBio/goquery"
 )
 
-func (client *AlmedClient) GetIdsHTMLJSON() ([]int, error) {
+func (client *AlmedClient) GetIdsHTMLJSON(ctx context.Context) ([]int, error) {
 	body := url.Values{
 		"search":        []string{"S%C3%B6k"},
 		"date_from":     []string{"2022-07-03"},
@@ -27,7 +29,7 @@ func (client *AlmedClient) GetIdsHTMLJSON() ([]int, error) {
 		"accessibility": []string{},
 		"status":        []string{},
 	}
-	req, err := http.NewRequest("POST", client.BaseUrl+"/main/search", strings.NewReader(body.Encode()))
+	req, err := http.NewRequestWithContext(ctx, "POST", client.BaseURL+"/main/search", strings.NewReader(body.Encode()))
 	if err != nil {
 		return []int{}, fmt.Errorf("getIdsHTMLJSON: %w", err)
 	}
@@ -56,14 +58,6 @@ func (client *AlmedClient) GetIdsHTMLJSON() ([]int, error) {
 	return allIds, nil
 }
 
-func GetItem(id int, mapPoints map[int]MapPoint) error {
-	//point, ok := mapPoints[id]
-	//if !ok {
-	//	return errors.New("invalid map point")
-	//}
-	return nil
-}
-
 const (
 	orgFieldType                = "Arrangör:"
 	dateFieldType               = "Dag:"
@@ -81,12 +75,16 @@ const (
 )
 
 type AlmedClient struct {
-	BaseUrl string
+	BaseURL string
 }
 
-func (client *AlmedClient) GetEvent(id int) (*AlmedEvent, error) {
-	eventUrl := fmt.Sprintf(client.BaseUrl+"/event/%d", id)
-	resp, err := http.Get(eventUrl)
+func (client *AlmedClient) GetEvent(ctx context.Context, id int) (*AlmedEvent, error) {
+	eventURL := fmt.Sprintf(client.BaseURL+"/event/%d", id)
+	req, err := http.NewRequestWithContext(ctx, "GET", eventURL, nil)
+	if err != nil {
+		return nil, fmt.Errorf("get html item: %w", err)
+	}
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("get html item: %w", err)
 	}
@@ -97,7 +95,7 @@ func (client *AlmedClient) GetEvent(id int) (*AlmedEvent, error) {
 	}
 	event := doc.Find("#event")
 	res := &AlmedEvent{
-		Id: id,
+		ID: id,
 	}
 	event.Children().Each(func(i int, selection *goquery.Selection) {
 		if selection.Is("h1") {
@@ -109,7 +107,7 @@ func (client *AlmedClient) GetEvent(id int) (*AlmedEvent, error) {
 			switch selection.Find("strong").Text() {
 			case orgFieldType:
 				fields := strings.Split(selection.Text(), ":")
-				res.Organiser = fields[len(fields)-1]
+				res.Organizer = fields[len(fields)-1]
 			case dateFieldType:
 				start, end, err := eventTime(selection)
 				if err != nil {
@@ -138,10 +136,10 @@ func (client *AlmedClient) GetEvent(id int) (*AlmedEvent, error) {
 				res.Location = fields[1]
 			case greenFieldType, liveFieldType, foodFieldType:
 				fields := strings.Split(selection.Text(), ":")
-				res.Green = "Nej" == fields[1]
+				res.Green = fields[1] == "Nej"
 			case accessabilityFieldType:
 				fields := strings.Split(selection.Text(), ":")
-				res.Availabilty = fields[1]
+				res.Availability = fields[1]
 			default:
 				if selection.Text() == "" ||
 					strings.Contains(selection.Text(), "https://") ||
@@ -157,16 +155,16 @@ func (client *AlmedClient) GetEvent(id int) (*AlmedEvent, error) {
 			return
 		}
 		res.Web = []string{web}
-		res.Url = eventUrl
+		res.URL = eventURL
 		switch i {
 		case 3:
 			res.Description = selection.Text()
 		case 4:
-			participantsHtml, err := selection.Find("section").Html()
+			participantsHTML, err := selection.Find("section").Html()
 			if err != nil {
 				return
 			}
-			parts, parties, err := participants(participantsHtml)
+			parts, parties, err := participants(participantsHTML)
 			if err != nil {
 				return
 			}
@@ -189,16 +187,25 @@ const (
 	mp Party = "miljöpartiet"
 )
 
-var allParties = []Party{s, m, l, c, v, sd, mp}
-var partyShort = []Party{"s", "m", "l", "c", "v", "sd", "mp"}
+func parties() map[Party]string {
+	return map[Party]string{
+		s:  "s",
+		m:  "m",
+		l:  "l",
+		c:  "c",
+		v:  "v",
+		sd: "sd",
+		mp: "mp",
+	}
+}
 
-func participants(participantsHtml string) ([]AlmedParticipant, []Party, error) {
+func participants(participantsHTML string) ([]AlmedParticipant, []Party, error) {
 	delimiter := "</strong> "
-	index := strings.Index(participantsHtml, delimiter)
+	index := strings.Index(participantsHTML, delimiter)
 	if index < 0 {
 		return []AlmedParticipant{}, []Party{}, errors.New("bad participant string")
 	}
-	parts := strings.Split(participantsHtml[index+len(delimiter):], "<br>")
+	parts := strings.Split(participantsHTML[index+len(delimiter):], "<br>")
 	res := []AlmedParticipant{}
 	for _, p := range parts[:len(parts)-1] {
 		nameParts := strings.Split(p, ",")
@@ -210,9 +217,9 @@ func participants(participantsHtml string) ([]AlmedParticipant, []Party, error) 
 	}
 	eventParties := []Party{}
 	for _, participant := range res {
-		for index, party := range allParties {
+		for party, name := range parties() {
 			if strings.Contains(participant.Company, string(party)) ||
-				strings.Contains(participant.Company, "("+string(partyShort[index])+")") {
+				strings.Contains(participant.Company, "("+name+")") {
 				eventParties = append(eventParties, party)
 			}
 		}
@@ -266,9 +273,9 @@ func ts(str string) (int, int, error) {
 }
 
 type AlmedEvent struct {
-	Id                  int                `json:"id"`
+	ID                  int                `json:"id"`
 	Title               string             `json:"title"`
-	Organiser           string             `json:"organiser"`
+	Organizer           string             `json:"organizer"`
 	StartTime           time.Time          `json:"start_time"`
 	EndTime             time.Time          `json:"end_time"`
 	Type                string             `json:"type"`
@@ -282,11 +289,11 @@ type AlmedEvent struct {
 	Participants        []AlmedParticipant `json:"participants"`
 	Parties             []Party            `json:"parties"`
 	Green               bool               `json:"green"`
-	Availabilty         string             `json:"availabilty"`
+	Availability        string             `json:"Availability"`
 	Live                bool               `json:"live"`
 	Food                bool               `json:"food"`
 	Web                 []string           `json:"web"`
-	Url                 string             `json:"url"`
+	URL                 string             `json:"url"`
 }
 
 type AlmedParticipant struct {

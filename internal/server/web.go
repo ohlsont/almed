@@ -4,19 +4,20 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/ohlsont/almed/internal/event"
-	"golang.org/x/sync/errgroup"
 	"log"
 	"net"
 	"net/http"
 	"strconv"
+
+	"github.com/ohlsont/almed/internal/event"
+	"golang.org/x/sync/errgroup"
 )
 
 func WebServer(ctx context.Context, cancelFunc context.CancelFunc) error {
 	mux := http.NewServeMux()
-	client := event.AlmedClient{BaseUrl: "https://almedalsguiden.com"}
+	client := event.AlmedClient{BaseURL: "https://almedalsguiden.com"}
 	mux.HandleFunc("/mapPoints", func(writer http.ResponseWriter, request *http.Request) {
-		points, err := event.GetMapPoints()
+		points, err := client.GetMapPoints(ctx)
 		if err != nil {
 			fmt.Println(err)
 			writer.WriteHeader(http.StatusBadRequest)
@@ -35,11 +36,10 @@ func WebServer(ctx context.Context, cancelFunc context.CancelFunc) error {
 			writer.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		return
 	})
 
 	mux.HandleFunc("/ids", func(writer http.ResponseWriter, request *http.Request) {
-		ids, err := client.GetIdsHTMLJSON()
+		ids, err := client.GetIdsHTMLJSON(ctx)
 		if err != nil {
 			fmt.Println(err)
 			writer.WriteHeader(http.StatusBadRequest)
@@ -69,7 +69,7 @@ func WebServer(ctx context.Context, cancelFunc context.CancelFunc) error {
 			}
 			return
 		}
-		event, err := client.GetEvent(id)
+		event, err := client.GetEvent(ctx, id)
 		if err != nil {
 			writer.WriteHeader(http.StatusBadRequest)
 			if _, err := writer.Write([]byte("could not get event")); err != nil {
@@ -94,8 +94,7 @@ func WebServer(ctx context.Context, cancelFunc context.CancelFunc) error {
 	if err != nil {
 		return fmt.Errorf("webServer: %w", err)
 	}
-	var g *errgroup.Group
-	g, ctx = errgroup.WithContext(ctx)
+	var g errgroup.Group
 	g.Go(func() error {
 		if err := http.Serve(ln, mux); err != nil {
 			cancelFunc()

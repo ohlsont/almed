@@ -1,13 +1,17 @@
+Instructions
+============
 
-# Instructions
-All commands can be found in package.json in both server and client 
+All commands can be found in package.json in both server and client
 
-## Dev
+Dev
+---
+
 ```sh
 yarn dev
 ```
 
-## Test
+Test
+----
 
 ```sh
 yarn test
