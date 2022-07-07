@@ -36,11 +36,12 @@ func TestParticipants(t *testing.T) {
 		Amanda Frick, Strategy Consultant, Accenture<br>
 		Karin Brynell, VD, Svensk Dagligvaruhandel<br>
 		Isabella Melkersson, Partnership lead, SSE Business Lab<br>
-		Maria Smith, Generalsekreterare, Axfoundation<br>Roberto Rufo Gonzalez, CEO, Consupedia<br>
+		Maria Smith, Generalsekreterare, Axfoundation<br>
+		Roberto Rufo Gonzalez, CEO, Consupedia<br>
 	</section>`
 
 	res, parties, err := participants(str)
 	assert.NilError(t, err)
-	assert.Equal(t, len(res), 6)
+	assert.Equal(t, len(res), 7)
 	assert.Equal(t, len(parties), 0)
 }

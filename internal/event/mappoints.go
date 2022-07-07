@@ -17,7 +17,10 @@ func (client *AlmedClient) GetMapPoints(ctx context.Context) (map[int]MapPoint, 
 	}
 	req, err := http.NewRequestWithContext(
 		ctx,
-		"POST", client.BaseURL+"/api?version=js", strings.NewReader(body.Encode()))
+		"POST",
+		client.BaseURL+"/api?version=js",
+		strings.NewReader(body.Encode()),
+	)
 	if err != nil {
 		return nil, fmt.Errorf("get map points: %w", err)
 	}
