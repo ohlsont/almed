@@ -109,7 +109,7 @@ func WebServer(ctx context.Context, storage *storage.Client) error {
 		return fmt.Errorf("webServer: %w", err)
 	}
 	g, _ := errgroup.WithContext(ctx)
-	s := &http.Server{Handler: mux}
+	s := &http.Server{Handler: mux, ReadHeaderTimeout: 3 * time.Second}
 	g.Go(func() error {
 		if err := s.Serve(ln); err != nil {
 			// log why we shut down the context
