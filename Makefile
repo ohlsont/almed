@@ -78,3 +78,7 @@ go-review: $(sagefile)
 .PHONY: go-test
 go-test: $(sagefile)
 	@$(sagefile) GoTest
+
+.PHONY: run
+run: $(sagefile)
+	@$(sagefile) Run
