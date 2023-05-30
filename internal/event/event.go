@@ -29,7 +29,12 @@ func (client *AlmedClient) GetEventIds(ctx context.Context) ([]int, error) {
 		"accessibility": []string{},
 		"status":        []string{},
 	}
-	req, err := http.NewRequestWithContext(ctx, "POST", client.BaseURL+"/main/search", strings.NewReader(body.Encode()))
+	req, err := http.NewRequestWithContext(
+		ctx,
+		http.MethodPost,
+		client.BaseURL+"/main/search",
+		strings.NewReader(body.Encode()),
+	)
 	if err != nil {
 		return []int{}, fmt.Errorf("getIdsHTMLJSON: %w", err)
 	}
@@ -80,7 +85,7 @@ type AlmedClient struct {
 
 func (client *AlmedClient) GetEvent(ctx context.Context, id int) (*AlmedEvent, error) {
 	eventURL := fmt.Sprintf(client.BaseURL+"/event/%d", id)
-	req, err := http.NewRequestWithContext(ctx, "GET", eventURL, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, eventURL, nil)
 	if err != nil {
 		return nil, fmt.Errorf("get html item: %w", err)
 	}
@@ -146,7 +151,7 @@ func (client *AlmedClient) GetEvent(ctx context.Context, id int) (*AlmedEvent, e
 					selection.Text() == participantsFieldType {
 					return
 				}
-				//log.Println(i, " unhandled type: ", selection.Text())
+				log.Println(i, " unhandled type: ", selection.Text())
 			}
 		})
 		web, err := selection.Find("section p a").Html()
