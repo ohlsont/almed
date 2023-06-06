@@ -18,6 +18,8 @@ import (
 func WebServer(ctx context.Context, storage *storage.Client) error {
 	mux := http.NewServeMux()
 	client := event.AlmedClient{BaseURL: "https://almedalsguiden.com"}
+
+	addDebugHandles(ctx, client, mux)
 	mux.HandleFunc("/mapPoints", func(writer http.ResponseWriter, request *http.Request) {
 		points, err := client.GetMapPoints(ctx)
 		if err != nil {
@@ -103,8 +105,11 @@ func WebServer(ctx context.Context, storage *storage.Client) error {
 			return
 		}
 	})
+	addr := "127.0.0.1"
+	port := 8080
+	fullAddr := fmt.Sprintf("%s:%d", addr, port)
 	lc := net.ListenConfig{}
-	ln, err := lc.Listen(ctx, "tcp4", "127.0.0.1:8080")
+	ln, err := lc.Listen(ctx, "tcp4", fullAddr)
 	if err != nil {
 		return fmt.Errorf("webServer: %w", err)
 	}
@@ -121,7 +126,7 @@ func WebServer(ctx context.Context, storage *storage.Client) error {
 		<-ctx.Done()
 		return s.Shutdown(context.Background())
 	})
-	log.Println("Listning...")
+	log.Println("Listning to " + fullAddr + "...")
 	return g.Wait()
 }
 

@@ -1,0 +1,37 @@
+{
+  "id": 18571,
+  "title": "Magdalena Andersson talar i Almedalen",
+  "organizer": "Socialdemokraterna",
+  "start_time": "2022-07-03T19:00:00+02:00",
+  "end_time": "2022-07-03T20:00:00+02:00",
+  "type": "Tal",
+  "subject": [
+    "Partiets halvdag"
+  ],
+  "language": "Svenska",
+  "location": "Almedalen, scen",
+  "description": "Statsminister och partiordförande Magdalena Andersson, Socialdemokraterna, håller sitt tal i Almedalen under partiets halvdag.",
+  "latitude": 0,
+  "longitude": 0,
+  "participants": [
+    {
+      "Name": "Magdalena Andersson",
+      "Title": "Partiordförande",
+      "Company": "Socialdemokraterna"
+    }
+  ],
+  "parties": ["socialdemokraterna"],
+  "green": false,
+  "availability": "Teckenspråkstolkning, Teleslinga\n, Toalett tillgänglig för rullstol\n, Entré och lokal tillgänglig för rullstol\n, Syntolkning\n, Evenemanget textas\n",
+  "live": false,
+  "food": false,
+  "web": [
+    "https://almedalsveckanplay.info/65492",
+    "http://www.socialdemokraterna.se"
+  ],
+  "url": "https://almedalsguiden.com/event/18571",
+  "organizer_contact": [
+    "almedalen@socialdemokraterna.se",
+    "almedalen@socialdemokraterna.se"
+  ]
+}

@@ -1,0 +1,32 @@
+{
+  "id": 19120,
+  "title": "Urinsortering med koncentrering av urin till näringspulver",
+  "organizer": "Stiftelsen Byggekologi",
+  "start_time": "2022-07-03T14:00:00+02:00",
+  "end_time": "2022-07-03T14:45:00+02:00",
+  "type": "Seminarium/föreläsning",
+  "subject": [
+    "Byggande",
+    " Hållbarhet"
+  ],
+  "language": "Svenska",
+  "location": "Södertorg 12, innergården",
+  "location_description": "Tält på gräsmattan",
+  "description": "Rening av avloppsvatten är dyrt och det finns problem med deponi av slam. Vi har problem med övergödning i våra vattendrag och kostnaderna för konstgödsel stiger i höjden. Om vi kan sortera och använda oss av näringsämnena i urinen så löser vi många av problemen. Men hur ska det gå till?",
+  "latitude": 0,
+  "longitude": 0,
+  "participants":[{"Name":"Jenna Senecal","Title":"forskare","Company":"Sanitation360"},{"Name":"Nils Söderlund","Title":"moderator","Company":"Stiftelsen Byggekologi"}],
+  "parties": [],
+  "green": false,
+  "Availability": "Toalett tillgänglig för rullstol\n, Entré och lokal tillgänglig för rullstol\n",
+  "live": false,
+  "food": false,
+  "web": [
+    "http://www.byggekologi.com"
+  ],
+  "url": "https://almedalsguiden.com/event/19120",
+  "organizer_contact": [
+    "torkel.andersson@bydemand.se",
+    "nils@arkitektkontor-soderlund.se"
+  ]
+}
