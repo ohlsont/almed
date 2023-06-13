@@ -7,7 +7,6 @@ import (
 	"log"
 	"net"
 	"net/http"
-	"sync"
 	"time"
 
 	"github.com/ohlsont/almed/internal/event"
@@ -15,12 +14,45 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
+const (
+	indexRoute     = "/"
+	mapPointsRoute = "/map"
+	idsRoute       = "/ids"
+	eventRoute     = "/item/"
+	updateDatabase = "/update"
+
+	address = "127.0.0.1:8080"
+	baseURL = "https://almedalsguiden.com"
+)
+
 func WebServer(ctx context.Context, storage *storage.Client) error {
 	mux := http.NewServeMux()
-	client := event.AlmedClient{BaseURL: "https://almedalsguiden.com"}
+	client := event.AlmedClient{BaseURL: baseURL}
 
 	addDebugHandles(ctx, client, mux)
-	mux.HandleFunc("/mapPoints", func(writer http.ResponseWriter, request *http.Request) {
+	mux.HandleFunc(indexRoute, func(writer http.ResponseWriter, request *http.Request) {
+		events, err := storage.GetEvents(ctx)
+		if err != nil {
+			fmt.Println(err)
+			writer.WriteHeader(http.StatusBadRequest)
+			_, _ = writer.Write([]byte("could not get events"))
+			return
+		}
+		var data []byte
+		data, err = json.Marshal(events)
+		if err != nil {
+			fmt.Println(err)
+			writer.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		writer.Header().Set("Content-Type", "application/json")
+		if _, err := writer.Write(data); err != nil {
+			fmt.Println(err)
+			writer.WriteHeader(http.StatusBadRequest)
+			return
+		}
+	})
+	mux.HandleFunc(mapPointsRoute, func(writer http.ResponseWriter, request *http.Request) {
 		points, err := client.GetMapPoints(ctx)
 		if err != nil {
 			fmt.Println(err)
@@ -42,43 +74,24 @@ func WebServer(ctx context.Context, storage *storage.Client) error {
 		}
 	})
 
-	mux.HandleFunc("/updateEvents", func(writer http.ResponseWriter, request *http.Request) {
+	mux.HandleFunc(updateDatabase, func(writer http.ResponseWriter, request *http.Request) {
 		ids, err := client.GetEventIds(ctx)
 		if err != nil {
 			writer.WriteHeader(http.StatusBadRequest)
-			_, err := writer.Write([]byte("bad id"))
-			if err != nil {
-				log.Println(err)
-				return
-			}
+			_, _ = writer.Write([]byte("could not get event ids"))
 			return
 		}
-		mapLock := sync.Mutex{}
-		events := map[int]*event.AlmedEvent{}
-		for _, chunk := range chunkBy(ids, 100) {
-			newCtx, cancelFunc := context.WithTimeout(ctx, 10*time.Second)
-			defer cancelFunc()
-			g, ctx := errgroup.WithContext(newCtx)
-
-			for _, id := range chunk {
-				id := id
-				g.Go(func() error {
-					ev, err := client.GetEvent(ctx, id)
-					if err != nil {
-						return fmt.Errorf("getting chunked id: %w", err)
-					}
-					mapLock.Lock()
-					events[ev.ID] = ev
-					mapLock.Unlock()
-					return nil
-				})
-			}
-			if err := g.Wait(); err != nil {
-				err := fmt.Errorf("update events: get chunks: %w", err)
-				log.Println(err)
-				writer.WriteHeader(http.StatusInternalServerError)
-				return
-			}
+		points, err := client.GetMapPoints(ctx)
+		if err != nil {
+			writer.WriteHeader(http.StatusBadRequest)
+			_, _ = writer.Write([]byte("could not get points"))
+			return
+		}
+		events, err := client.ChunkGetterAllEvents(ctx, ids, points, time.Second)
+		if err != nil {
+			writer.WriteHeader(http.StatusBadRequest)
+			_, _ = writer.Write([]byte("could not get events"))
+			return
 		}
 		if err := storage.SaveEvents(ctx, events); err != nil {
 			err := fmt.Errorf("update events: %w", err)
@@ -105,11 +118,12 @@ func WebServer(ctx context.Context, storage *storage.Client) error {
 			return
 		}
 	})
-	addr := "127.0.0.1"
-	port := 8080
-	fullAddr := fmt.Sprintf("%s:%d", addr, port)
+	return setupServer(ctx, mux, address)
+}
+
+func setupServer(ctx context.Context, mux *http.ServeMux, address string) error {
 	lc := net.ListenConfig{}
-	ln, err := lc.Listen(ctx, "tcp4", fullAddr)
+	ln, err := lc.Listen(ctx, "tcp4", address)
 	if err != nil {
 		return fmt.Errorf("webServer: %w", err)
 	}
@@ -126,13 +140,6 @@ func WebServer(ctx context.Context, storage *storage.Client) error {
 		<-ctx.Done()
 		return s.Shutdown(context.Background())
 	})
-	log.Println("Listning to " + fullAddr + "...")
+	log.Println("Listning to " + address + "...")
 	return g.Wait()
-}
-
-func chunkBy[T any](items []T, chunkSize int) (chunks [][]T) {
-	for chunkSize < len(items) {
-		items, chunks = items[chunkSize:], append(chunks, items[0:chunkSize:chunkSize])
-	}
-	return append(chunks, items)
 }

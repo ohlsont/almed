@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -13,7 +14,7 @@ import (
 )
 
 func addDebugHandles(ctx context.Context, client event.AlmedClient, mux *http.ServeMux) {
-	mux.HandleFunc("/ids", func(writer http.ResponseWriter, request *http.Request) {
+	mux.HandleFunc(idsRoute, func(writer http.ResponseWriter, request *http.Request) {
 		ids, err := client.GetEventIds(ctx)
 		if err != nil {
 			writer.WriteHeader(http.StatusBadRequest)
@@ -24,6 +25,7 @@ func addDebugHandles(ctx context.Context, client event.AlmedClient, mux *http.Se
 			}
 			return
 		}
+		sort.Ints(ids)
 		data, err := json.Marshal(ids)
 		if err != nil {
 			writer.WriteHeader(http.StatusInternalServerError)
@@ -35,7 +37,7 @@ func addDebugHandles(ctx context.Context, client event.AlmedClient, mux *http.Se
 			return
 		}
 	})
-	mux.HandleFunc("/event/", func(writer http.ResponseWriter, request *http.Request) {
+	mux.HandleFunc(eventRoute, func(writer http.ResponseWriter, request *http.Request) {
 		parts := strings.Split(request.URL.Path, "/")
 		if len(parts) < 2 {
 			writer.WriteHeader(http.StatusBadRequest)

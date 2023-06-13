@@ -9,12 +9,49 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
+	"golang.org/x/sync/errgroup"
 )
 
 const baseURL = "https://almedalsguiden.com"
+
+func (client *AlmedClient) ChunkGetterAllEvents(
+	ctx context.Context,
+	ids []int,
+	mapPoints map[int]MapPoint,
+	interval time.Duration,
+) (map[int]*AlmedEvent, error) {
+	mapLock := sync.Mutex{}
+	events := map[int]*AlmedEvent{}
+	for _, chunk := range chunkBy(ids, 100) {
+		newCtx, cancelFunc := context.WithTimeout(ctx, interval)
+		defer cancelFunc()
+		g, ctx := errgroup.WithContext(newCtx)
+		for _, id := range chunk {
+			id := id
+			mapPoint := mapPoints[id]
+			g.Go(func() error {
+				ev, err := client.GetEvent(ctx, id)
+				if err != nil {
+					return fmt.Errorf("getting chunked id: %w", err)
+				}
+				ev.Latitude = mapPoint.Latitude
+				ev.Longitude = mapPoint.Longitude
+				mapLock.Lock()
+				events[ev.ID] = ev
+				mapLock.Unlock()
+				return nil
+			})
+		}
+		if err := g.Wait(); err != nil {
+			return nil, fmt.Errorf("update events: get chunks: %w", err)
+		}
+	}
+	return events, nil
+}
 
 func (client *AlmedClient) GetEventIds(ctx context.Context) ([]int, error) {
 	year := time.Now().Year() - 1
@@ -296,6 +333,13 @@ func ts(str string) (int, int, error) {
 		return 0, 0, fmt.Errorf("ts: %w", err)
 	}
 	return hour, minute, nil
+}
+
+func chunkBy[T any](items []T, chunkSize int) (chunks [][]T) {
+	for chunkSize < len(items) {
+		items, chunks = items[chunkSize:], append(chunks, items[0:chunkSize:chunkSize])
+	}
+	return append(chunks, items)
 }
 
 type AlmedEvent struct {
