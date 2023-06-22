@@ -13,7 +13,7 @@ import (
 	"github.com/ohlsont/almed/internal/event"
 )
 
-func addDebugHandles(ctx context.Context, client event.AlmedClient, mux *http.ServeMux) {
+func addDebugHandles(ctx context.Context, client *event.AlmedClient, mux *http.ServeMux) {
 	mux.HandleFunc(idsRoute, func(writer http.ResponseWriter, request *http.Request) {
 		ids, err := client.GetEventIds(ctx)
 		if err != nil {

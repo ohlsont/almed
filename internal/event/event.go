@@ -27,6 +27,7 @@ func (client *AlmedClient) ChunkGetterAllEvents(
 	mapLock := sync.Mutex{}
 	events := map[int]*AlmedEvent{}
 	for _, chunk := range chunkBy(ids, 100) {
+		log.Println("chunk", chunk[0])
 		newCtx, cancelFunc := context.WithTimeout(ctx, interval)
 		defer cancelFunc()
 		g, ctx := errgroup.WithContext(newCtx)
@@ -272,11 +273,17 @@ func participants(participantsHTML string) ([]AlmedParticipant, []Party, error) 
 			continue
 		}
 		nameParts := strings.Split(p, ", ")
-		res = append(res, AlmedParticipant{
-			Name:    strings.TrimSpace(nameParts[0]),
-			Title:   nameParts[1],
-			Company: nameParts[2],
-		})
+		p := AlmedParticipant{
+			Company: nameParts[len(nameParts)-1],
+		}
+		if len(nameParts) > 0 {
+			p.Name = strings.TrimSpace(nameParts[0])
+		}
+		if len(nameParts) > 1 {
+			p.Title = strings.Join(nameParts[1:len(nameParts)-1], ",")
+			p.Company = nameParts[len(nameParts)-1]
+		}
+		res = append(res, p)
 	}
 	eventParties := []Party{}
 	for _, participant := range res {

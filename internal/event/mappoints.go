@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -32,7 +32,7 @@ func (client *AlmedClient) GetMapPoints(ctx context.Context) (map[int]MapPoint, 
 		return nil, fmt.Errorf("get map points: %w", err)
 	}
 	defer resp.Body.Close()
-	data, err := ioutil.ReadAll(resp.Body)
+	data, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, fmt.Errorf("get map points: %w", err)
 	}

@@ -7,6 +7,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/ohlsont/almed/internal/event"
@@ -22,12 +23,14 @@ const (
 	updateDatabase = "/update"
 
 	address = "127.0.0.1:8080"
-	baseURL = "https://almedalsguiden.com"
 )
 
-func WebServer(ctx context.Context, storage *storage.Client) error {
+func WebServer(
+	ctx context.Context,
+	storage storage.Storage,
+	client *event.AlmedClient,
+) error {
 	mux := http.NewServeMux()
-	client := event.AlmedClient{BaseURL: baseURL}
 
 	addDebugHandles(ctx, client, mux)
 	mux.HandleFunc(indexRoute, func(writer http.ResponseWriter, request *http.Request) {
@@ -36,6 +39,10 @@ func WebServer(ctx context.Context, storage *storage.Client) error {
 			fmt.Println(err)
 			writer.WriteHeader(http.StatusBadRequest)
 			_, _ = writer.Write([]byte("could not get events"))
+			return
+		}
+		if len(events) == 0 {
+			_, _ = writer.Write([]byte("no events in storage, run update"))
 			return
 		}
 		var data []byte
@@ -99,6 +106,7 @@ func WebServer(ctx context.Context, storage *storage.Client) error {
 			writer.WriteHeader(http.StatusInternalServerError)
 			return
 		}
+		log.Println("number of updates; " + strconv.Itoa(len(events)))
 	})
 	mux.HandleFunc("/events", func(writer http.ResponseWriter, request *http.Request) {
 		events, err := storage.GetEvents(ctx)
