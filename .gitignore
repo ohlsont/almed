@@ -2,3 +2,4 @@
 .idea
 service-account.json
 internal/event/testdata/local
+internal/server/local
